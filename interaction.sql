@@ -1,0 +1,15 @@
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (1, 13, 5, 3, '2026-02-05 14:48:35');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (3, 12, 5, 2, '2026-02-28 15:50:49');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (7, 13, 2, 3, '2026-03-08 17:20:56');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (10, 12, 6, 1, '2026-03-22 16:30:41');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (11, 12, 6, 2, '2026-03-22 16:30:41');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (12, 12, 6, 3, '2026-03-22 16:30:41');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (13, 13, 5, 1, '2026-03-22 16:58:51');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (15, 21, 8, 2, '2026-03-22 17:42:48');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (18, 23, 9, 3, '2026-03-22 17:44:46');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (19, 29, 11, 2, '2026-03-22 18:40:21');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (20, 31, 12, 2, '2026-03-22 18:41:34');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (23, 33, 13, 3, '2026-03-22 18:43:13');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (24, 13, 9, 2, '2026-03-23 12:19:47');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (25, 13, 7, 2, '2026-03-23 12:21:06');
+INSERT INTO `interaction` (`id`, `user_id`, `product_id`, `type`, `create_time`) VALUES (26, 13, 2, 2, '2026-03-23 12:21:49');

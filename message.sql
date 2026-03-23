@@ -1,0 +1,10 @@
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (1, 12, '用户【方贵】对你的【平板】感兴趣!', 1, '2026-02-05 14:48:35');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (2, 12, '用户【方贵】对你的【手机】感兴趣!', 1, '2026-03-08 17:20:56');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (3, 13, '用户【胡图图】对你的【??????】感兴趣!', 1, '2026-03-22 16:30:41');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (4, 22, '用户【buyer_1774172686048】对你的【regression_product_1774172686048】感兴趣!', 0, '2026-03-22 17:44:46');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (5, 22, '用户【buyer_1774172686048】预约了你的商品【debug_order_message_1774174862767】，订单号【1774174862815】，请及时处理。', 0, '2026-03-22 18:21:03');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (6, 32, '用户【buyer_1774176192573】对你的【regression_product_1774176192573】感兴趣!', 0, '2026-03-22 18:43:13');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (7, 32, '用户【buyer_1774176192573】预约了你的商品【regression_product_1774176192573】，订单号【1774176193105】，请及时处理。', 0, '2026-03-22 18:43:13');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (8, 33, '卖家【seller_1774176192573】已确认你预约的商品【regression_product_1774176192573】，请线下交易后在订单中确认。', 0, '2026-03-22 18:43:13');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (9, 32, '买家【buyer_1774176192573】已确认商品【regression_product_1774176192573】线下交易完成，请尽快完成最终确认。', 0, '2026-03-22 18:43:13');
+INSERT INTO `message` (`id`, `user_id`, `content`, `is_read`, `create_time`) VALUES (10, 33, '卖家【seller_1774176192573】已确认商品【regression_product_1774176192573】交易完成，订单【1774176193105】已完成。', 0, '2026-03-22 18:43:13');
