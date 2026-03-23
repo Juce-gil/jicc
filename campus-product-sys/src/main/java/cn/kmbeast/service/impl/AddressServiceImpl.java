@@ -1,4 +1,4 @@
-package cn.kmbeast.service.impl;
+﻿package cn.kmbeast.service.impl;
 
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.mapper.AddressMapper;
@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 地址业务逻辑接口实现类
@@ -23,108 +26,203 @@ public class AddressServiceImpl implements AddressService {
     @Resource
     private AddressMapper addressMapper;
 
-    /**
-     * 新增
-     *
-     * @param address 参数
-     * @return Result<String> 后台通用返回封装类
-     */
     @Override
     public Result<String> save(Address address) {
-        if (!StringUtils.hasText(address.getConcatPerson())) {
-            return ApiResult.error("收件人不能为空");
+        if (address == null) {
+            return ApiResult.error("请求参数不能为空");
         }
-        if (!StringUtils.hasText(address.getConcatPhone())) {
-            return ApiResult.error("收件电话不能为空");
+        Integer currentUserId = LocalThreadHolder.getUserId();
+        if (currentUserId == null) {
+            return ApiResult.error("登录已失效，请重新登录");
         }
-        if (!StringUtils.hasText(address.getGetAdr())) {
-            return ApiResult.error("收件地址不能为空");
+        normalizeAddress(address);
+        String validationMessage = validateAddress(address);
+        if (validationMessage != null) {
+            return ApiResult.error(validationMessage);
         }
-        // 检验手机号是否合理
-        if (!PhoneNumberValidator.isValidChinesePhoneNumber(address.getConcatPhone())) {
-            return ApiResult.error("收件电话不符合要求");
+        address.setUserId(currentUserId);
+        if (address.getIsDefault() == null) {
+            address.setIsDefault(false);
         }
-        address.setUserId(LocalThreadHolder.getUserId());
-        dealDefaultAddress(address);
+        dealDefaultAddress(address, currentUserId);
         addressMapper.save(address);
         return ApiResult.success("收件地址新增成功");
     }
 
-    /**
-     * 修改
-     *
-     * @param address 参数
-     * @return Result<String> 后台通用返回封装类
-     */
     @Override
     public Result<String> update(Address address) {
-        if (!StringUtils.hasText(address.getConcatPerson())) {
-            return ApiResult.error("收件人不能为空");
+        if (address == null) {
+            return ApiResult.error("请求参数不能为空");
         }
-        if (!StringUtils.hasText(address.getConcatPhone())) {
-            return ApiResult.error("收件电话不能为空");
+        Integer currentUserId = LocalThreadHolder.getUserId();
+        if (currentUserId == null) {
+            return ApiResult.error("登录已失效，请重新登录");
         }
-        if (!StringUtils.hasText(address.getGetAdr())) {
-            return ApiResult.error("收件地址不能为空");
+        if (address.getId() == null) {
+            return ApiResult.error("地址ID不能为空");
         }
-        // 检验手机号是否合理
-        if (!PhoneNumberValidator.isValidChinesePhoneNumber(address.getConcatPhone())) {
-            return ApiResult.error("收件电话不符合要求");
+        Address savedAddress = findUserAddressById(address.getId(), currentUserId);
+        if (savedAddress == null) {
+            return ApiResult.error("收件地址不存在或无权限操作");
         }
-        dealDefaultAddress(address);
+        normalizeAddress(address);
+        String validationMessage = validateAddress(address);
+        if (validationMessage != null) {
+            return ApiResult.error(validationMessage);
+        }
+        address.setUserId(currentUserId);
+        if (address.getIsDefault() == null) {
+            address.setIsDefault(Boolean.TRUE.equals(savedAddress.getIsDefault()));
+        }
+        dealDefaultAddress(address, currentUserId);
         addressMapper.update(address);
         return ApiResult.success("收件地址修改成功");
     }
 
-    private void dealDefaultAddress(Address address) {
-        if (address.getIsDefault()) { // 是默认收货地址，则先去修改别的默认收货地址，因为只能有一个默认收货地址
-            AddressQueryDto addressQueryDto = new AddressQueryDto();
-            addressQueryDto.setIsDefault(true); // 设置为默认收货地址
-            addressQueryDto.setUserId(LocalThreadHolder.getUserId()); // 设置用户ID
-            List<Address> addressList = addressMapper.query(addressQueryDto);
-            if (!addressList.isEmpty()) { // 有默认收货地址则处理
-                Address addressSave = addressList.get(0);
-                addressSave.setIsDefault(false); // 设置成非默认收货地址
-                addressMapper.update(addressSave);
+    private void dealDefaultAddress(Address address, Integer currentUserId) {
+        if (!Boolean.TRUE.equals(address.getIsDefault())) {
+            return;
+        }
+        List<Address> addressList = queryUserAddresses(currentUserId);
+        for (Address savedAddress : addressList) {
+            if (savedAddress == null || savedAddress.getId() == null) {
+                continue;
             }
+            if (address.getId() != null && address.getId().equals(savedAddress.getId())) {
+                continue;
+            }
+            if (!Boolean.TRUE.equals(savedAddress.getIsDefault())) {
+                continue;
+            }
+            savedAddress.setIsDefault(false);
+            addressMapper.update(savedAddress);
         }
     }
 
-    /**
-     * 删除
-     *
-     * @param ids 待删除ID集合
-     * @return Result<String> 后台通用返回封装类
-     */
     @Override
     public Result<String> batchDelete(List<Integer> ids) {
-        addressMapper.batchDelete(ids);
+        Integer currentUserId = LocalThreadHolder.getUserId();
+        if (currentUserId == null) {
+            return ApiResult.error("登录已失效，请重新登录");
+        }
+        List<Integer> deleteIds = sanitizeIds(ids);
+        if (deleteIds.isEmpty()) {
+            return ApiResult.success("没有需要删除的收件地址");
+        }
+        List<Integer> ownedIds = filterOwnedAddressIds(deleteIds, currentUserId);
+        if (ownedIds.isEmpty()) {
+            return ApiResult.error("收件地址不存在或无权限删除");
+        }
+        addressMapper.batchDelete(ownedIds);
         return ApiResult.success("收件地址删除成功");
     }
 
-    /**
-     * 查询
-     *
-     * @param addressQueryDto 查询参数
-     * @return Result<List < Address>> 后台通用返回封装类
-     */
     @Override
     public Result<List<Address>> query(AddressQueryDto addressQueryDto) {
-        int totalCount = addressMapper.queryCount(addressQueryDto);
-        List<Address> addressList = addressMapper.query(addressQueryDto);
-        return ApiResult.success(addressList, totalCount);
+        AddressQueryDto safeQueryDto = addressQueryDto == null ? new AddressQueryDto() : addressQueryDto;
+        int totalCount = addressMapper.queryCount(safeQueryDto);
+        List<Address> addressList = addressMapper.query(safeQueryDto);
+        return ApiResult.success(addressList == null ? new ArrayList<>() : addressList, totalCount);
     }
 
-    /**
-     * 设置为默认地址
-     *
-     * @param address 收货地址
-     * @return Result<String>
-     */
     @Override
     public Result<String> isDefault(Address address) {
-        dealDefaultAddress(address);
-        addressMapper.update(address);
-        return ApiResult.success("设置为默认地址成功");
+        if (address == null || address.getId() == null) {
+            return ApiResult.error("地址ID不能为空");
+        }
+        Integer currentUserId = LocalThreadHolder.getUserId();
+        if (currentUserId == null) {
+            return ApiResult.error("登录已失效，请重新登录");
+        }
+        Address savedAddress = findUserAddressById(address.getId(), currentUserId);
+        if (savedAddress == null) {
+            return ApiResult.error("收件地址不存在或无权限操作");
+        }
+        Address updateAddress = new Address();
+        updateAddress.setId(savedAddress.getId());
+        updateAddress.setUserId(currentUserId);
+        updateAddress.setIsDefault(true);
+        dealDefaultAddress(updateAddress, currentUserId);
+        addressMapper.update(updateAddress);
+        return ApiResult.success("设置默认地址成功");
+    }
+
+    private String validateAddress(Address address) {
+        if (!StringUtils.hasText(address.getConcatPerson())) {
+            return "收件人不能为空";
+        }
+        if (!StringUtils.hasText(address.getConcatPhone())) {
+            return "收件电话不能为空";
+        }
+        if (!StringUtils.hasText(address.getGetAdr())) {
+            return "收件地址不能为空";
+        }
+        if (!PhoneNumberValidator.isValidChinesePhoneNumber(address.getConcatPhone())) {
+            return "收件电话不符合要求";
+        }
+        return null;
+    }
+
+    private void normalizeAddress(Address address) {
+        if (address == null) {
+            return;
+        }
+        if (address.getConcatPerson() != null) {
+            address.setConcatPerson(address.getConcatPerson().trim());
+        }
+        if (address.getConcatPhone() != null) {
+            address.setConcatPhone(address.getConcatPhone().trim());
+        }
+        if (address.getGetAdr() != null) {
+            address.setGetAdr(address.getGetAdr().trim());
+        }
+    }
+
+    private Address findUserAddressById(Integer addressId, Integer currentUserId) {
+        if (addressId == null || currentUserId == null) {
+            return null;
+        }
+        for (Address address : queryUserAddresses(currentUserId)) {
+            if (address != null && addressId.equals(address.getId())) {
+                return address;
+            }
+        }
+        return null;
+    }
+
+    private List<Address> queryUserAddresses(Integer currentUserId) {
+        AddressQueryDto queryDto = new AddressQueryDto();
+        queryDto.setUserId(currentUserId);
+        List<Address> addressList = addressMapper.query(queryDto);
+        return addressList == null ? new ArrayList<>() : addressList;
+    }
+
+    private List<Integer> filterOwnedAddressIds(List<Integer> ids, Integer currentUserId) {
+        Set<Integer> ownedIdSet = new LinkedHashSet<>();
+        for (Address address : queryUserAddresses(currentUserId)) {
+            if (address != null && address.getId() != null) {
+                ownedIdSet.add(address.getId());
+            }
+        }
+        List<Integer> result = new ArrayList<>();
+        for (Integer id : ids) {
+            if (ownedIdSet.contains(id)) {
+                result.add(id);
+            }
+        }
+        return result;
+    }
+
+    private List<Integer> sanitizeIds(List<Integer> ids) {
+        Set<Integer> idSet = new LinkedHashSet<>();
+        if (ids == null || ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        for (Integer id : ids) {
+            if (id != null) {
+                idSet.add(id);
+            }
+        }
+        return new ArrayList<>(idSet);
     }
 }

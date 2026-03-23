@@ -2,7 +2,7 @@
   <span class="logo">
     <el-image
       style="width:30px; height: 30px"
-      src="/logo.png"
+      src="logo.png"
       fit="fill"
     ></el-image>
     <div v-if="!flag">

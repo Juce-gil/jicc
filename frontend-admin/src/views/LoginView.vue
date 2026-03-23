@@ -1,8 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import md5 from 'js-md5'
-import { auth, login } from '@/api/auth'
+import { md5 } from 'js-md5'
+import { auth, login, type LoginResponseData } from '@/api/auth'
+import type { ApiResponse } from '@/utils/request'
 import { useAdminAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -29,10 +30,10 @@ const handleSubmit = async () => {
 
   loading.value = true
   try {
-    const response: any = await login({
+    const response = (await login({
       userAccount: form.userAccount.trim(),
       userPwd: md5(form.userPwd.trim())
-    })
+    })) as ApiResponse<LoginResponseData>
 
     if (response?.code !== 200) {
       errorMessage.value = response?.msg || '登录失败，请稍后重试。'
@@ -54,7 +55,7 @@ const handleSubmit = async () => {
 
     authStore.setSession(token, role)
 
-    const profileResponse: any = await auth()
+    const profileResponse = (await auth()) as ApiResponse<Record<string, unknown> | null>
     if (profileResponse?.code === 200) {
       authStore.setProfile(profileResponse.data || null)
     }
@@ -87,7 +88,13 @@ const handleSubmit = async () => {
         </label>
         <label>
           <span>密码</span>
-          <input v-model="form.userPwd" type="password" class="form-input" placeholder="请输入密码" @keyup.enter="handleSubmit" />
+          <input
+            v-model="form.userPwd"
+            type="password"
+            class="form-input"
+            placeholder="请输入密码"
+            @keyup.enter="handleSubmit"
+          />
         </label>
       </div>
 

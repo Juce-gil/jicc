@@ -15,14 +15,14 @@ spring:
       max-request-size: 20MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/campus?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/campus?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
   redis:
-    host: localhost
-    port: 6379
-    database: 0
-    timeout: 3000
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+    database: ${SPRING_REDIS_DATABASE:0}
+    timeout: ${SPRING_REDIS_TIMEOUT:3000}
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
@@ -32,13 +32,13 @@ jwt:
   expire-hours: 72
 
 trade:
-  upload-dir: pic
-  frontend-user-base-url: http://localhost:5173
-  frontend-admin-base-url: http://localhost:5174
+  upload-dir: ${TRADE_UPLOAD_DIR:pic}
+  frontend-user-base-url: ${TRADE_FRONTEND_USER_BASE_URL:http://localhost:5173}
+  frontend-admin-base-url: ${TRADE_FRONTEND_ADMIN_BASE_URL:http://localhost:5174}
   websocket-path: /ws/chat
 
 minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket-name: campus-trade
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET_NAME:campus-trade}

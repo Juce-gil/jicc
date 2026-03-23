@@ -32,7 +32,7 @@
         <div class="hero-illustration">
           <div class="glow glow-1"></div>
           <div class="glow glow-2"></div>
-          <img src="/bag.png" :alt="copy.illustrationAlt" />
+          <img src="bag.png" :alt="copy.illustrationAlt" />
         </div>
       </section>
 

@@ -1,5 +1,3 @@
-cd /www/wwwroot/jicc
-cat > deploy.sh <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
@@ -331,8 +329,9 @@ init_database() {
       ;;
   esac
 
-  log "Replacing localhost image URLs in DB..."
-  mysql_exec -D "$DB_NAME" -e "UPDATE product SET cover_list = REPLACE(cover_list, 'http://localhost:21090', 'http://${SERVER_IP}') WHERE cover_list LIKE '%http://localhost:21090%';" || true
+  log "Normalizing image URLs in DB..."
+  mysql_exec -D "$DB_NAME" -e "UPDATE product SET cover_list = REPLACE(REPLACE(cover_list, 'http://localhost:21090', ''), 'http://127.0.0.1:21090', '') WHERE cover_list LIKE '%http://localhost:21090%' OR cover_list LIKE '%http://127.0.0.1:21090%';" || true
+  mysql_exec -D "$DB_NAME" -e "UPDATE user SET user_avatar = REPLACE(REPLACE(user_avatar, 'http://localhost:21090', ''), 'http://127.0.0.1:21090', '') WHERE user_avatar LIKE '%http://localhost:21090%' OR user_avatar LIKE '%http://127.0.0.1:21090%';" || true
   ok "Database step completed"
 }
 
@@ -344,16 +343,42 @@ build_backend() {
   ok "Backend build completed"
 }
 
+install_node_modules() {
+  if [[ -f package-lock.json ]]; then
+    npm ci
+  else
+    npm install
+  fi
+}
+
+replace_dir() {
+  local src="$1"
+  local dest="$2"
+  local parent tmp bak
+  parent="$(dirname "$dest")"
+  tmp="${dest}.next"
+  bak="${dest}.bak"
+  mkdir -p "$parent"
+  rm -rf "$tmp" "$bak"
+  mkdir -p "$tmp"
+  cp -r "$src"/. "$tmp"/
+  if [[ -d "$dest" ]]; then
+    mv "$dest" "$bak"
+  fi
+  mv "$tmp" "$dest"
+  rm -rf "$bak"
+}
+
 build_frontends() {
   log "Building user frontend..."
   cd "$USER_FRONTEND_DIR"
-  npm install
+  install_node_modules
   npm run build
   [[ -d "$USER_FRONTEND_DIR/dist" ]] || { err "User frontend dist not found"; exit 1; }
 
   log "Building admin frontend..."
   cd "$ADMIN_FRONTEND_DIR"
-  npm install
+  install_node_modules
   npm run build
   [[ -d "$ADMIN_FRONTEND_DIR/dist" ]] || { err "Admin frontend dist not found"; exit 1; }
 
@@ -362,9 +387,8 @@ build_frontends() {
 
 deploy_frontends() {
   log "Deploying frontend static files..."
-  rm -rf "$WEB_USER_DIR"/* "$WEB_ADMIN_DIR"/*
-  cp -r "$USER_FRONTEND_DIR/dist/"* "$WEB_USER_DIR/"
-  cp -r "$ADMIN_FRONTEND_DIR/dist/"* "$WEB_ADMIN_DIR/"
+  replace_dir "$USER_FRONTEND_DIR/dist" "$WEB_USER_DIR"
+  replace_dir "$ADMIN_FRONTEND_DIR/dist" "$WEB_ADMIN_DIR"
   ok "Frontend files deployed"
 }
 
@@ -486,4 +510,3 @@ main() {
 }
 
 main "$@"
-EOF

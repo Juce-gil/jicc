@@ -1,9 +1,15 @@
-import request from '@/utils/request'
+﻿import request from '@/utils/request'
 
 export interface LoginPayload {
   userAccount: string
   userPwd: string
 }
 
-export const login = (data: LoginPayload) => request.post('/user/login', data)
-export const auth = () => request.get('/user/auth')
+export interface LoginResponseData {
+  token?: string
+  role?: number | null
+  [key: string]: unknown
+}
+
+export const login = (data: LoginPayload) => request.post<LoginResponseData>('/user/login', data)
+export const auth = () => request.get<Record<string, unknown> | null>('/user/auth')

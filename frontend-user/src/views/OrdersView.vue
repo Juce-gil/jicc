@@ -248,12 +248,35 @@ const formatTotalPrice = (order: OrderRecord) => {
   return '?' + total.toFixed(2)
 }
 
+const normalizeAssetUrl = (raw: string) => {
+  const value = raw.trim()
+  if (!value) {
+    return ''
+  }
+  try {
+    const origin = window.location.origin
+    const url = new URL(value, origin)
+    const pathname = url.pathname || ''
+    const search = url.search || ''
+    const isApiAsset = pathname.startsWith('/api/') || pathname.startsWith('/file/')
+    if (!isApiAsset) {
+      return /^https?:\/\//i.test(value) ? value : url.toString()
+    }
+    const normalizedPath = pathname.startsWith('/file/')
+      ? '/api/campus-product-sys/v1.0' + pathname
+      : pathname.replace('/api/book-manage-sys-api/v1.0', '/api/campus-product-sys/v1.0')
+    return origin + normalizedPath + search
+  } catch (error) {
+    return value
+  }
+}
+
 const resolveCover = (order: OrderRecord) => {
   const raw = order.productCover?.split(',').map((item) => item.trim()).find(Boolean)
   if (!raw) {
     return ''
   }
-  return raw
+  return normalizeAssetUrl(raw)
 }
 
 const getCounterpartyLabel = computed(() => (activeMode.value === 'buyer' ? 'Seller' : 'Buyer'))

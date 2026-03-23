@@ -112,7 +112,7 @@
                 <span>
                   <span v-if="!comment.upvoteFlag">
                     <img
-                      src="/upvote_default.png"
+                      src="upvote_default.png"
                       style="margin-top: 7px;height: 15px;width: 15px;"
                       alt=""
                     />
@@ -120,7 +120,7 @@
                   </span>
                   <span v-else>
                     <img
-                      src="/upvote_active.png"
+                      src="upvote_active.png"
                       style="margin-top: 7px;height: 15px;width: 15px;"
                       alt=""
                     />
@@ -248,7 +248,7 @@
                   <span>
                     <span v-if="!commentChild.upvoteFlag">
                       <img
-                        src="/upvote_default.png"
+                        src="upvote_default.png"
                         style="margin-top: 7px;height: 15px;width: 15px;"
                         alt=""
                       />
@@ -260,7 +260,7 @@
                     </span>
                     <span v-else>
                       <img
-                        src="/upvote_active.png"
+                        src="upvote_active.png"
                         style="margin-top: 7px;height: 15px;width: 15px;"
                         alt=""
                       />

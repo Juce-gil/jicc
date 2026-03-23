@@ -63,6 +63,9 @@ public class OrdersServiceImpl implements OrdersService {
 
     @Override
     public Result<String> batchDelete(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ApiResult.success("orders deleted successfully");
+        }
         ordersMapper.batchDelete(ids);
         return ApiResult.success("orders deleted successfully");
     }

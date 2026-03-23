@@ -134,6 +134,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Result<String> batchDelete(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ApiResult.success("products deleted successfully");
+        }
         productMapper.batchDelete(ids);
         return ApiResult.success("products deleted successfully");
     }

@@ -1,4 +1,4 @@
-package cn.kmbeast.mapper;
+﻿package cn.kmbeast.mapper;
 
 import cn.kmbeast.pojo.dto.query.extend.EvaluationsQueryDto;
 import cn.kmbeast.pojo.entity.Evaluations;
@@ -13,62 +13,24 @@ import java.util.List;
  */
 public interface EvaluationsMapper {
 
-    /**
-     * 查询指定内容下的全部评论
-     *
-     * @param contentId   内容ID
-     * @param contentType 内容类型
-     * @return List<CommentParentVO>
-     */
     List<CommentParentVO> getParentComments(@Param(value = "contentId") Integer contentId,
                                             @Param(value = "userId") Integer userId,
                                             @Param(value = "contentType") String contentType);
 
-    /**
-     * 分页查询评论
-     *
-     * @param evaluationsQueryDto 参数
-     * @return List<CommentParentVO>
-     */
     List<CommentChildVO> query(EvaluationsQueryDto evaluationsQueryDto);
 
-    /**
-     * 分页查询评论总数
-     *
-     * @param evaluationsQueryDto 参数
-     * @return List<CommentParentVO>
-     */
     Integer queryCount(EvaluationsQueryDto evaluationsQueryDto);
 
-    /**
-     * 查询全部二级评论
-     *
-     * @param ids ID列表
-     * @return List<Integer>
-     */
     List<Integer> selectChildComments(@Param(value = "ids") List<Integer> ids);
 
-    /**
-     * 批量删除
-     *
-     * @param ids ID列表
-     */
+    Evaluations selectById(@Param(value = "id") Integer id);
+
+    List<Integer> selectIdsByCommenterId(@Param(value = "commenterId") Integer commenterId);
+
     void batchDelete(@Param(value = "ids") List<Integer> ids);
 
-    /**
-     * 查询指定评论的数目
-     *
-     * @param contentId   内容ID
-     * @param contentType 内容类型
-     * @return Integer
-     */
     Integer totalCount(Integer contentId, String contentType);
 
-    /**
-     * 评论新增
-     *
-     * @param evaluations 评论信息实体
-     */
     void save(Evaluations evaluations);
 
 }

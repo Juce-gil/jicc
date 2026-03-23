@@ -38,8 +38,6 @@ public class FileController {
     @Value("${trade.upload-dir:pic}")
     private String uploadDir;
 
-    private final static String URL = "http://localhost:21090";
-
     @PostConstruct
     public void initUploadDirectoryInfo() {
         try {
@@ -72,7 +70,7 @@ public class FileController {
         try {
             if (uploadFile(multipartFile, fileName)) {
                 rep.put("code", 200);
-                rep.put("data", URL + API + "/file/getFile?fileName=" + fileName);
+                rep.put("data", API + "/file/getFile?fileName=" + fileName);
                 return rep;
             }
         } catch (IOException e) {
@@ -279,14 +277,20 @@ public class FileController {
             log.warn("Requested file not found in primary or legacy upload directories. fileName={}", imageName);
             return;
         }
-        FileInputStream fileInputStream = new FileInputStream(image);
-        byte[] bytes = new byte[fileInputStream.available()];
-        if (fileInputStream.read(bytes) > 0) {
-            OutputStream outputStream = response.getOutputStream();
-            outputStream.write(bytes);
-            outputStream.close();
+        String contentType = Files.probeContentType(image.toPath());
+        if (contentType != null && !contentType.isEmpty()) {
+            response.setContentType(contentType);
         }
-        fileInputStream.close();
+        response.setContentLengthLong(image.length());
+        try (FileInputStream fileInputStream = new FileInputStream(image);
+             OutputStream outputStream = response.getOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = fileInputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, length);
+            }
+            outputStream.flush();
+        }
     }
 
 }

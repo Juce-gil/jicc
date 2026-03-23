@@ -32,7 +32,7 @@ CREATE TABLE `user` (
   `last_login_time` datetime DEFAULT NULL,
   `create_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_user_account` (`user_account`)
+  UNIQUE KEY `uk_user_account` (`user_account`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='system user';
 
 CREATE TABLE `category` (
@@ -123,7 +123,8 @@ CREATE TABLE `orders` (
   PRIMARY KEY (`id`),
   KEY `idx_orders_user` (`user_id`),
   KEY `idx_orders_product` (`product_id`),
-  KEY `idx_orders_status` (`trade_status`)
+  KEY `idx_orders_status` (`trade_status`),
+  UNIQUE KEY `uk_orders_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='reservation order';
 
 CREATE TABLE `evaluations` (
@@ -212,8 +213,8 @@ INSERT INTO `category` (`id`, `name`, `is_use`) VALUES
 (5, '其他', 1);
 
 INSERT INTO `product` (`id`, `name`, `detail`, `cover_list`, `old_level`, `category_id`, `user_id`, `inventory`, `price`, `is_bargain`, `status`, `audit_status`, `create_time`) VALUES
-(1, '高等数学教材', '九成新，可校内面交。', 'http://localhost:21090/api/campus-product-sys/v1.0/file/getFile?fileName=demo-book.png', 9, 1, 3, 1, 25.00, 0, 'ON_SALE', 'APPROVED', NOW()),
-(2, '二手蓝牙耳机', '功能正常，支持当面验货。', 'http://localhost:21090/api/campus-product-sys/v1.0/file/getFile?fileName=demo-earbuds.png', 8, 2, 3, 1, 88.00, 1, 'ON_SALE', 'APPROVED', NOW());
+(1, '高等数学教材', '九成新，可校内面交。', '/api/campus-product-sys/v1.0/file/getFile?fileName=demo-book.png', 9, 1, 3, 1, 25.00, 0, 'ON_SALE', 'APPROVED', NOW()),
+(2, '二手蓝牙耳机', '功能正常，支持当面验货。', '/api/campus-product-sys/v1.0/file/getFile?fileName=demo-earbuds.png', 8, 2, 3, 1, 88.00, 1, 'ON_SALE', 'APPROVED', NOW());
 
 INSERT INTO `sys_notice` (`id`, `title`, `content`, `status`, `create_user_id`, `create_time`, `publish_time`) VALUES
 (1, '欢迎使用校园二手交易平台', '当前版本已经完成双前端骨架与预约面交核心流程改造，后续会继续补校园认证、举报和公告后台。', 'PUBLISHED', 1, NOW(), NOW());

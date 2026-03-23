@@ -9,7 +9,7 @@
     <name>campus-product-api</name>
     <!--编译配置-->
     <properties>
-        <news.build.sourceEncoding>UTF-8</news.build.sourceEncoding>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <!-- 与 JDK 17+、IntelliJ JPS 兼容的 Lombok；覆盖父 POM 旧版本 -->
@@ -133,6 +133,10 @@
                         <arg>-parameters</arg>
                     </compilerArgs>
                 </configuration>
+            </plugin>
+                    <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
         <!--定义资源路径-->
