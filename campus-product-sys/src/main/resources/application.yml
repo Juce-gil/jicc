@@ -32,7 +32,7 @@ jwt:
   expire-hours: 72
 
 trade:
-  upload-dir: ./pic
+  upload-dir: pic
   frontend-user-base-url: http://localhost:5173
   frontend-admin-base-url: http://localhost:5174
   websocket-path: /ws/chat
