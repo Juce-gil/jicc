@@ -118,6 +118,11 @@
 <script>
 import UserPageSection from "@/components/user/UserPageSection.vue";
 import { toFullImageUrl } from "@/utils/imageUrl";
+import {
+  resolveUploadUrl,
+  uploadFileWithAxios,
+  getUploadErrorMessage
+} from "@/utils/upload";
 
 export default {
   name: "PostProduct",
@@ -176,37 +181,20 @@ export default {
       }
     },
 
-    handleUploadRequest(options) {
-      const formData = new FormData();
-      formData.append("file", options.file);
-
-      this.$axios
-        .post("/file/upload", formData)
-        .then(res => {
-          const body = res.data;
-          if (body && body.code === 200 && body.data != null) {
-            const url =
-              typeof body.data === "string"
-                ? body.data
-                : body.data.url || body.data.path || body.data.fileUrl || "";
-            if (url) options.onSuccess(url);
-            else options.onError(new Error("返回的图片地址无效"));
-          } else {
-            options.onError(
-              new Error((body && (body.msg || body.message)) || "上传失败")
-            );
-          }
-        })
-        .catch(err => {
-          options.onError(err);
+    async handleUploadRequest(options) {
+      try {
+        const url = await uploadFileWithAxios({
+          axiosInstance: this.$axios,
+          file: options.file
         });
+        options.onSuccess(url);
+      } catch (error) {
+        options.onError(error);
+      }
     },
 
     handleUploadSuccess(url) {
-      const raw =
-        typeof url === "string"
-          ? url
-          : url && (url.url || url.path || url.fileUrl);
+      const raw = resolveUploadUrl(url);
       if (raw && String(raw).trim()) {
         this.product.coverList = String(raw).trim();
         this.$message.success("图片上传成功");
@@ -215,8 +203,8 @@ export default {
       }
     },
 
-    handleUploadError() {
-      this.$message.error("图片上传失败，请重试");
+    handleUploadError(error) {
+      this.$message.error(getUploadErrorMessage(error, "图片上传失败，请重试"));
     },
 
     submitForm() {

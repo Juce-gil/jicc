@@ -285,13 +285,15 @@
 
 <script>
 import { toFullImageUrl } from "@/utils/imageUrl";
-import { API_BASE_URL } from "@/utils/request";
-import { getToken } from "@/utils/storage";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl
+} from "@/utils/upload";
 
 export default {
   data() {
     return {
-      uploadAction: API_BASE_URL + "/file/upload",
       userPwd: "",
       userAvatar: "",
       data: {},
@@ -326,9 +328,11 @@ export default {
     };
   },
   computed: {
+    uploadAction() {
+      return FILE_UPLOAD_ACTION;
+    },
     uploadHeaders() {
-      const token = getToken();
-      return token ? { token } : {};
+      return getUploadHeaders();
     }
   },
   created() {
@@ -379,22 +383,23 @@ export default {
     },
     // 头像上传回调函数
     handleAvatarSuccess(res) {
+      const uploadUrl = resolveUploadUrl(res);
       this.$notify({
         duration: 1500,
         title: "头像上传",
-        message: res.code === 200 ? "上传成功" : "上传失败",
-        type: res.code === 200 ? "success" : "error"
+        message: uploadUrl ? "上传成功" : "上传失败",
+        type: uploadUrl ? "success" : "error"
       });
       // 上传成功则更新用户头像
-      if (res.code === 200) {
-        this.userAvatar = res.data;
+      if (uploadUrl) {
+        this.userAvatar = uploadUrl;
       }
     },
     handleAvatarError() {
       this.$notify({
         duration: 1500,
-        title: "Avatar Upload",
-        message: "Upload failed, please login again and retry",
+        title: "头像上传",
+        message: "上传失败，请确认登录状态后重试",
         type: "error"
       });
     },

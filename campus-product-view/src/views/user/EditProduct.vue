@@ -103,15 +103,19 @@
 <script>
 import Editor from "@/components/Editor";
 import UserPageSection from "@/components/user/UserPageSection.vue";
-import { clearProductInfo, getProductInfo, getToken } from "@/utils/storage";
-import { API_BASE_URL } from "@/utils/request";
+import { clearProductInfo, getProductInfo } from "@/utils/storage";
 import { toFullImageUrl } from "@/utils/imageUrl";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl,
+  getUploadErrorMessage
+} from "@/utils/upload";
 export default {
   components: { Editor, UserPageSection },
   name: "EditProduct",
   data() {
     return {
-      uploadAction: API_BASE_URL + "/file/upload",
       product: {},
       categorySelected: {}, // 当前选中的商品类别
       dialogImageUrl: "",
@@ -121,9 +125,11 @@ export default {
     };
   },
   computed: {
+    uploadAction() {
+      return FILE_UPLOAD_ACTION;
+    },
     uploadHeaders() {
-      const token = getToken();
-      return token ? { token } : {};
+      return getUploadHeaders();
     }
   },
   created() {
@@ -146,9 +152,7 @@ export default {
     },
     resolveCoverValue(file) {
       if (!file) return "";
-      return (
-        file.rawUrl || (file.response && file.response.data) || file.url || ""
-      );
+      return resolveUploadUrl(file.response) || file.rawUrl || file.url || "";
     },
     getStorageProductInfo() {
       this.product = getProductInfo();
@@ -269,11 +273,12 @@ export default {
      * @param {*} fileList
      */
     handlePictureCardSuccess(response) {
-      if (!response || response.code !== 200) {
+      const uploadUrl = resolveUploadUrl(response);
+      if (!uploadUrl) {
         this.$message.error("Image upload failed");
         return;
       }
-      this.coverList.push(this.createCoverFile(response.data));
+      this.coverList.push(this.createCoverFile(uploadUrl));
     },
     handleRemove(file, fileList) {
       this.coverList = fileList.map(item => {
@@ -290,8 +295,10 @@ export default {
       this.dialogImageUrl = this.imageUrl(this.resolveCoverValue(file));
       this.dialogVisible = true;
     },
-    handleUploadError() {
-      this.$message.error("Image upload failed, please login again and retry");
+    handleUploadError(error) {
+      this.$message.error(
+        getUploadErrorMessage(error, "Image upload failed, please retry")
+      );
     }
   }
 };

@@ -113,22 +113,26 @@
 </template>
 <script>
 import { toFullImageUrl } from "@/utils/imageUrl";
-import { API_BASE_URL } from "@/utils/request";
-import { getToken } from "@/utils/storage";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl
+} from "@/utils/upload";
 
 export default {
   name: "Self",
   data() {
     return {
-      uploadAction: API_BASE_URL + "/file/upload",
       userInfo: {},
       userAvatar: ""
     };
   },
   computed: {
+    uploadAction() {
+      return FILE_UPLOAD_ACTION;
+    },
     uploadHeaders() {
-      const token = getToken();
-      return token ? { token } : {};
+      return getUploadHeaders();
     }
   },
   created() {
@@ -161,15 +165,16 @@ export default {
     },
     // 头像上传
     handleAvatarSuccess(res) {
+      const uploadUrl = resolveUploadUrl(res);
       this.$notify({
         duration: 1500,
         title: "头像上传",
-        message: res.code === 200 ? "上传成功" : "上传失败",
-        type: res.code === 200 ? "success" : "error"
+        message: uploadUrl ? "上传成功" : "上传失败",
+        type: uploadUrl ? "success" : "error"
       });
       // 上传成功则更新用户头像
-      if (res.code === 200) {
-        this.userAvatar = res.data;
+      if (uploadUrl) {
+        this.userAvatar = uploadUrl;
       }
     },
     handleAvatarError() {

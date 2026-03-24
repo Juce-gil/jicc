@@ -101,8 +101,12 @@
 <script>
 import request from "@/utils/request.js";
 import router from "@/router/index";
-import { clearToken, getToken } from "@/utils/storage";
-import { API_BASE_URL } from "@/utils/request";
+import { clearToken } from "@/utils/storage";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl
+} from "@/utils/upload";
 import AdminMenu from "@/components/VerticalMenu.vue";
 import Logo from "@/components/Logo.vue";
 import LevelHeader from "@/components/LevelHeader.vue";
@@ -116,7 +120,6 @@ export default {
   },
   data() {
     return {
-      uploadAction: API_BASE_URL + "/file/upload",
       adminRoutes: [],
       activeIndex: "",
       userInfo: {
@@ -143,9 +146,11 @@ export default {
     }
   },
   computed: {
+    uploadAction() {
+      return FILE_UPLOAD_ACTION;
+    },
     uploadHeaders() {
-      const token = getToken();
-      return token ? { token } : {};
+      return getUploadHeaders();
     }
   },
   created() {
@@ -216,12 +221,13 @@ export default {
       }
     },
     handleAvatarSuccess(res) {
-      if (res.code !== 200) {
+      const uploadUrl = resolveUploadUrl(res);
+      if (!uploadUrl) {
         this.$message.error(`头像上传异常，请确认登录状态后重试`);
         return;
       }
       this.$message.success(`头像上传成功`);
-      this.userInfo.url = res.data;
+      this.userInfo.url = uploadUrl;
     },
     handleAvatarError() {
       this.$message.error(`头像上传失败，请确认登录状态后重试`);

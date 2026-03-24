@@ -71,15 +71,17 @@
 <script>
 import Editor from "@/components/Editor";
 import { toFullImageUrl } from "@/utils/imageUrl";
-import { API_BASE_URL } from "@/utils/request";
-import { getToken } from "@/utils/storage";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl
+} from "@/utils/upload";
 
 export default {
   components: { Editor },
   name: "PostContent",
   data() {
     return {
-      uploadAction: API_BASE_URL + "/file/upload",
       publishing: false,
       content: {
         name: "",
@@ -89,9 +91,11 @@ export default {
     };
   },
   computed: {
+    uploadAction() {
+      return FILE_UPLOAD_ACTION;
+    },
     uploadHeaders() {
-      const token = getToken();
-      return token ? { token } : {};
+      return getUploadHeaders();
     }
   },
   methods: {
@@ -99,8 +103,9 @@ export default {
       return toFullImageUrl(url || "");
     },
     handleAvatarSuccess(res) {
-      if (res.code === 200) {
-        this.content.cover = res.data;
+      const uploadUrl = resolveUploadUrl(res);
+      if (uploadUrl) {
+        this.content.cover = uploadUrl;
         this.$message.success("封面图片上传成功");
       } else {
         this.$message.error("上传失败");

@@ -18,8 +18,12 @@
 <script>
 import Vue from "vue";
 import { Editor, Toolbar } from "@wangeditor/editor-for-vue";
-import { API_BASE_URL } from "@/utils/request";
 import { toFullImageUrl } from "@/utils/imageUrl";
+import {
+  FILE_UPLOAD_ACTION,
+  getUploadHeaders,
+  resolveUploadUrl
+} from "@/utils/upload";
 export default Vue.extend({
   components: { Editor, Toolbar },
   props: {
@@ -42,7 +46,7 @@ export default Vue.extend({
         placeholder: "请输入内容...",
         MENU_CONF: {
           uploadImage: {
-            server: API_BASE_URL + "/file/upload",
+            server: FILE_UPLOAD_ACTION,
             fieldName: "file",
             maxFileSize: 10 * 1024 * 1024,
             maxNumberOfFiles: 10,
@@ -50,12 +54,11 @@ export default Vue.extend({
             metaWithUrl: false,
             withCredentials: true,
             timeout: 10 * 1000,
-            headers: {
-              token: sessionStorage.getItem("token")
-            },
+            headers: getUploadHeaders(),
             customInsert(res, insertFn) {
-              const imageUrl = toFullImageUrl(res && res.data ? res.data : "");
-              const finalUrl = imageUrl || (res && res.data) || "";
+              const rawUploadUrl = resolveUploadUrl(res);
+              const imageUrl = toFullImageUrl(rawUploadUrl);
+              const finalUrl = imageUrl || rawUploadUrl || "";
               insertFn(finalUrl, finalUrl, finalUrl);
             }
           }
