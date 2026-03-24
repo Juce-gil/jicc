@@ -1,6 +1,7 @@
 package cn.kmbeast.controller;
 
 import cn.kmbeast.aop.Pager;
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.pojo.api.Result;
 import cn.kmbeast.pojo.dto.query.extend.MessageQueryDto;
@@ -12,7 +13,7 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- * 消息控制器
+ * Message controller.
  */
 @RestController
 @RequestMapping("/message")
@@ -21,49 +22,33 @@ public class MessageController {
     @Resource
     private MessageService messageService;
 
-    /**
-     * 批量删除
-     */
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @PostMapping(value = "/batchDelete")
     @ResponseBody
     public Result<String> batchDelete(@RequestBody List<Integer> ids) {
         return messageService.batchDelete(ids);
     }
 
-    /**
-     * 消息设为已读
-     */
+    @Protector
     @PostMapping(value = "/setRead")
     @ResponseBody
     public Result<String> setRead() {
         return messageService.setRead(LocalThreadHolder.getUserId());
     }
 
-    /**
-     * 查询
-     *
-     * @param messageQueryDto 查询参数
-     * @return Result&lt;List&lt;MessageVO&gt;&gt; 响应结果
-     */
     @Pager
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @PostMapping(value = "/query")
     @ResponseBody
     public Result<List<MessageVO>> query(@RequestBody MessageQueryDto messageQueryDto) {
         return messageService.query(messageQueryDto);
     }
 
-    /**
-     * 查询用户自己需要接收的消息数据
-     *
-     * @param messageQueryDto 查询参数
-     * @return Result&lt;List&lt;MessageVO&gt;&gt; 响应结果
-     */
+    @Protector
     @PostMapping(value = "/queryUser")
     @ResponseBody
     public Result<List<MessageVO>> queryUser(@RequestBody MessageQueryDto messageQueryDto) {
         messageQueryDto.setUserId(LocalThreadHolder.getUserId());
         return messageService.query(messageQueryDto);
     }
-
 }
-

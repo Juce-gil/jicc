@@ -30,8 +30,10 @@
           <el-upload
             class="avatar-uploader"
             :action="uploadAction"
+            :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
+            :on-error="handleAvatarError"
           >
             <img
               v-if="content.cover"
@@ -70,6 +72,7 @@
 import Editor from "@/components/Editor";
 import { toFullImageUrl } from "@/utils/imageUrl";
 import { API_BASE_URL } from "@/utils/request";
+import { getToken } from "@/utils/storage";
 
 export default {
   components: { Editor },
@@ -85,6 +88,12 @@ export default {
       }
     };
   },
+  computed: {
+    uploadHeaders() {
+      const token = getToken();
+      return token ? { token } : {};
+    }
+  },
   methods: {
     coverUrl(url) {
       return toFullImageUrl(url || "");
@@ -96,6 +105,9 @@ export default {
       } else {
         this.$message.error("上传失败");
       }
+    },
+    handleAvatarError() {
+      this.$message.error("封面图片上传失败，请确认登录状态后重试");
     },
 
     async postContent() {

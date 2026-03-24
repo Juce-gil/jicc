@@ -1,5 +1,6 @@
 package cn.kmbeast.service.impl;
 
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.mapper.OrdersMapper;
 import cn.kmbeast.mapper.ProductMapper;
@@ -7,8 +8,10 @@ import cn.kmbeast.pojo.api.ApiResult;
 import cn.kmbeast.pojo.api.Result;
 import cn.kmbeast.pojo.dto.query.extend.OrdersQueryDto;
 import cn.kmbeast.pojo.dto.update.OrdersDTO;
+import cn.kmbeast.pojo.em.TradeStatusEnum;
 import cn.kmbeast.pojo.entity.Orders;
 import cn.kmbeast.pojo.entity.Product;
+import cn.kmbeast.pojo.vo.OrderActionResultVO;
 import cn.kmbeast.pojo.vo.OrdersVO;
 import cn.kmbeast.pojo.vo.ProductVO;
 import cn.kmbeast.service.OrdersService;
@@ -29,11 +32,11 @@ import java.util.Objects;
 @Service
 public class OrdersServiceImpl implements OrdersService {
 
-    private static final Integer ORDER_STATUS_PENDING_CONFIRM = 1;
-    private static final Integer ORDER_STATUS_RESERVED = 2;
-    private static final Integer ORDER_STATUS_PARTIAL_CONFIRMED = 3;
-    private static final Integer ORDER_STATUS_COMPLETED = 4;
-    private static final Integer ORDER_STATUS_CANCELLED = 5;
+    private static final Integer ORDER_STATUS_PENDING_CONFIRM = TradeStatusEnum.PENDING_CONFIRM.getCode();
+    private static final Integer ORDER_STATUS_RESERVED = TradeStatusEnum.RESERVED.getCode();
+    private static final Integer ORDER_STATUS_PARTIAL_CONFIRMED = TradeStatusEnum.PARTIAL_CONFIRMED.getCode();
+    private static final Integer ORDER_STATUS_COMPLETED = TradeStatusEnum.COMPLETED.getCode();
+    private static final Integer ORDER_STATUS_CANCELLED = TradeStatusEnum.CANCELLED.getCode();
 
     private static final String PRODUCT_STATUS_ON_SALE = "ON_SALE";
     private static final String PRODUCT_STATUS_SOLD = "SOLD";
@@ -52,17 +55,27 @@ public class OrdersServiceImpl implements OrdersService {
         }
         OrdersDTO ordersDTO = new OrdersDTO();
         BeanUtils.copyProperties(orders, ordersDTO);
-        return productService.buyProduct(ordersDTO);
+        Result<OrderActionResultVO> actionResult = productService.buyProduct(ordersDTO);
+        if (!Objects.equals(actionResult.getCode(), 200)) {
+            return ApiResult.error(actionResult.getMsg());
+        }
+        return ApiResult.success(actionResult.getMsg());
     }
 
     @Override
     public Result<String> update(Orders orders) {
+        if (!isAdmin(LocalThreadHolder.getRoleId())) {
+            return ApiResult.error("only admin can update order records");
+        }
         ordersMapper.update(orders);
         return ApiResult.success("order updated successfully");
     }
 
     @Override
     public Result<String> batchDelete(List<Integer> ids) {
+        if (!isAdmin(LocalThreadHolder.getRoleId())) {
+            return ApiResult.error("only admin can batch delete order records");
+        }
         if (ids == null || ids.isEmpty()) {
             return ApiResult.success("orders deleted successfully");
         }
@@ -96,7 +109,7 @@ public class OrdersServiceImpl implements OrdersService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<String> returnMoney(Integer ordersId) {
+    public Result<OrderActionResultVO> returnMoney(Integer ordersId) {
         OrdersQueryDto queryDto = new OrdersQueryDto();
         queryDto.setId(ordersId);
         List<OrdersVO> orders = ordersMapper.query(queryDto);
@@ -119,7 +132,18 @@ public class OrdersServiceImpl implements OrdersService {
         ordersMapper.update(updateEntity);
 
         restoreProductToSaleIfNeeded(ordersVO.getProductId());
-        return ApiResult.success("reservation order closed");
+        String message = "reservation order closed";
+        return ApiResult.success(
+                message,
+                OrderActionResultVO.of(
+                        ordersVO.getId(),
+                        ordersVO.getCode(),
+                        ordersVO.getTradeStatus(),
+                        ORDER_STATUS_CANCELLED,
+                        "ADMIN_CLOSE_RESERVATION",
+                        message
+                )
+        );
     }
 
     private void restoreProductToSaleIfNeeded(Integer productId) {
@@ -156,5 +180,9 @@ public class OrdersServiceImpl implements OrdersService {
         return Objects.equals(tradeStatus, ORDER_STATUS_PENDING_CONFIRM)
                 || Objects.equals(tradeStatus, ORDER_STATUS_RESERVED)
                 || Objects.equals(tradeStatus, ORDER_STATUS_PARTIAL_CONFIRMED);
+    }
+
+    private boolean isAdmin(Integer roleId) {
+        return Objects.equals(roleId, Protector.ROLE_ADMIN);
     }
 }

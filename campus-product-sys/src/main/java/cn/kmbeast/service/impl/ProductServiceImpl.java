@@ -1,5 +1,6 @@
 package cn.kmbeast.service.impl;
 
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.mapper.InteractionMapper;
 import cn.kmbeast.mapper.MessageMapper;
@@ -12,12 +13,14 @@ import cn.kmbeast.pojo.dto.query.extend.OrdersQueryDto;
 import cn.kmbeast.pojo.dto.query.extend.ProductQueryDto;
 import cn.kmbeast.pojo.dto.update.OrdersDTO;
 import cn.kmbeast.pojo.em.InteractionEnum;
+import cn.kmbeast.pojo.em.TradeStatusEnum;
 import cn.kmbeast.pojo.entity.Interaction;
 import cn.kmbeast.pojo.entity.Message;
 import cn.kmbeast.pojo.entity.Orders;
 import cn.kmbeast.pojo.entity.Product;
 import cn.kmbeast.pojo.entity.User;
 import cn.kmbeast.pojo.vo.ChartVO;
+import cn.kmbeast.pojo.vo.OrderActionResultVO;
 import cn.kmbeast.pojo.vo.OrdersDeliverDto;
 import cn.kmbeast.pojo.vo.OrdersVO;
 import cn.kmbeast.pojo.vo.ProductVO;
@@ -42,11 +45,11 @@ public class ProductServiceImpl implements ProductService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
 
-    private static final Integer ORDER_STATUS_PENDING_CONFIRM = 1;
-    private static final Integer ORDER_STATUS_RESERVED = 2;
-    private static final Integer ORDER_STATUS_PARTIAL_CONFIRMED = 3;
-    private static final Integer ORDER_STATUS_COMPLETED = 4;
-    private static final Integer ORDER_STATUS_CANCELLED = 5;
+    private static final Integer ORDER_STATUS_PENDING_CONFIRM = TradeStatusEnum.PENDING_CONFIRM.getCode();
+    private static final Integer ORDER_STATUS_RESERVED = TradeStatusEnum.RESERVED.getCode();
+    private static final Integer ORDER_STATUS_PARTIAL_CONFIRMED = TradeStatusEnum.PARTIAL_CONFIRMED.getCode();
+    private static final Integer ORDER_STATUS_COMPLETED = TradeStatusEnum.COMPLETED.getCode();
+    private static final Integer ORDER_STATUS_CANCELLED = TradeStatusEnum.CANCELLED.getCode();
 
     private static final String PRODUCT_STATUS_ON_SALE = "ON_SALE";
     private static final String PRODUCT_STATUS_RESERVED = "RESERVED";
@@ -66,7 +69,7 @@ public class ProductServiceImpl implements ProductService {
     private UserMapper userMapper;
 
     @Override
-    public Result<String> deliverGoods(OrdersDeliverDto ordersDeliverDto) {
+    public Result<OrderActionResultVO> deliverGoods(OrdersDeliverDto ordersDeliverDto) {
         if (ordersDeliverDto == null || ordersDeliverDto.getOrdersId() == null) {
             return ApiResult.error("order id cannot be empty");
         }
@@ -110,6 +113,18 @@ public class ProductServiceImpl implements ProductService {
         if (product.getId() == null) {
             return ApiResult.error("product id cannot be empty");
         }
+        ProductVO savedProduct = getProductById(product.getId());
+        if (savedProduct == null) {
+            return ApiResult.error("product not found");
+        }
+        Integer currentUserId = LocalThreadHolder.getUserId();
+        Integer currentRoleId = LocalThreadHolder.getRoleId();
+        if (currentUserId == null) {
+            return ApiResult.error("login expired, please login again");
+        }
+        if (!isAdmin(currentRoleId) && !Objects.equals(savedProduct.getUserId(), currentUserId)) {
+            return ApiResult.error("you can only update your own product");
+        }
         if (!StringUtils.hasText(product.getName())) {
             return ApiResult.error("product name cannot be empty");
         }
@@ -134,6 +149,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Result<String> batchDelete(List<Integer> ids) {
+        if (!isAdmin(LocalThreadHolder.getRoleId())) {
+            return ApiResult.error("only admin can batch delete products");
+        }
         if (ids == null || ids.isEmpty()) {
             return ApiResult.success("products deleted successfully");
         }
@@ -150,7 +168,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public synchronized Result<String> buyProduct(OrdersDTO ordersDTO) {
+    public synchronized Result<OrderActionResultVO> buyProduct(OrdersDTO ordersDTO) {
         if (ordersDTO == null || ordersDTO.getProductId() == null) {
             return ApiResult.error("product id cannot be empty");
         }
@@ -185,7 +203,16 @@ public class ProductServiceImpl implements ProductService {
                 "用户【" + resolveCurrentUserName() + "】预约了你的商品【"
                         + formatProductTitle(productVO.getName(), productVO.getId())
                         + "】，订单号【" + formatOrderCode(ordersDTO.getCode(), ordersDTO.getId()) + "】，请及时处理。");
-        return ApiResult.success("reservation request submitted, waiting for seller confirmation");
+        String message = "reservation request submitted, waiting for seller confirmation";
+        OrderActionResultVO actionResult = buildActionResult(
+                ordersDTO.getId(),
+                ordersDTO.getCode(),
+                null,
+                ORDER_STATUS_PENDING_CONFIRM,
+                "BUYER_CREATE_RESERVATION",
+                message
+        );
+        return ApiResult.success(message, actionResult);
     }
 
     private void createReservationOrder(Orders orders, ProductVO productVO) {
@@ -205,7 +232,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<String> placeAnOrder(Integer ordersId) {
+    public Result<OrderActionResultVO> placeAnOrder(Integer ordersId) {
         OrdersVO ordersVO = getOrderById(ordersId);
         if (ordersVO == null) {
             return ApiResult.error("order not found");
@@ -235,12 +262,21 @@ public class ProductServiceImpl implements ProductService {
                         + "】已确认你预约的商品【"
                         + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                         + "】，请线下交易后在订单中确认。");
-        return ApiResult.success("seller confirmed reservation, product locked as RESERVED");
+        String message = "seller confirmed reservation, product locked as RESERVED";
+        OrderActionResultVO actionResult = buildActionResult(
+                ordersVO.getId(),
+                ordersVO.getCode(),
+                ORDER_STATUS_PENDING_CONFIRM,
+                ORDER_STATUS_RESERVED,
+                "SELLER_CONFIRM_RESERVATION",
+                message
+        );
+        return ApiResult.success(message, actionResult);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<String> refund(Integer ordersId) {
+    public Result<OrderActionResultVO> refund(Integer ordersId) {
         OrdersVO ordersVO = getOrderById(ordersId);
         if (ordersVO == null) {
             return ApiResult.error("order not found");
@@ -281,12 +317,21 @@ public class ProductServiceImpl implements ProductService {
                             + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                             + "】的预约，订单号【" + formatOrderCode(ordersVO.getCode(), ordersVO.getId()) + "】。");
         }
-        return ApiResult.success(seller ? "seller cancelled the reservation" : "reservation cancelled successfully");
+        String message = seller ? "seller cancelled the reservation" : "reservation cancelled successfully";
+        OrderActionResultVO actionResult = buildActionResult(
+                ordersVO.getId(),
+                ordersVO.getCode(),
+                ordersVO.getTradeStatus(),
+                ORDER_STATUS_CANCELLED,
+                seller ? "SELLER_CANCEL_RESERVATION" : "BUYER_CANCEL_RESERVATION",
+                message
+        );
+        return ApiResult.success(message, actionResult);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<String> getGoods(Integer ordersId) {
+    public Result<OrderActionResultVO> getGoods(Integer ordersId) {
         OrdersVO ordersVO = getOrderById(ordersId);
         if (ordersVO == null) {
             return ApiResult.error("order not found");
@@ -324,7 +369,16 @@ public class ProductServiceImpl implements ProductService {
                             + "】已确认商品【"
                             + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                             + "】交易完成，订单【" + formatOrderCode(ordersVO.getCode(), ordersVO.getId()) + "】已完成。");
-            return ApiResult.success("both parties confirmed completion, product marked as SOLD");
+            String message = "both parties confirmed completion, product marked as SOLD";
+            OrderActionResultVO actionResult = buildActionResult(
+                    ordersVO.getId(),
+                    ordersVO.getCode(),
+                    ordersVO.getTradeStatus(),
+                    ORDER_STATUS_COMPLETED,
+                    "BUYER_CONFIRM_COMPLETION",
+                    message
+            );
+            return ApiResult.success(message, actionResult);
         }
 
         orders.setTradeStatus(ORDER_STATUS_PARTIAL_CONFIRMED);
@@ -335,12 +389,21 @@ public class ProductServiceImpl implements ProductService {
                         + "】已确认商品【"
                         + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                         + "】线下交易完成，请尽快完成最终确认。");
-        return ApiResult.success("buyer confirmed meetup completion, waiting for seller confirmation");
+        String message = "buyer confirmed meetup completion, waiting for seller confirmation";
+        OrderActionResultVO actionResult = buildActionResult(
+                ordersVO.getId(),
+                ordersVO.getCode(),
+                ordersVO.getTradeStatus(),
+                ORDER_STATUS_PARTIAL_CONFIRMED,
+                "BUYER_CONFIRM_COMPLETION",
+                message
+        );
+        return ApiResult.success(message, actionResult);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<String> confirmTradeBySeller(Integer ordersId) {
+    public Result<OrderActionResultVO> confirmTradeBySeller(Integer ordersId) {
         OrdersVO ordersVO = getOrderById(ordersId);
         if (ordersVO == null) {
             return ApiResult.error("order not found");
@@ -378,7 +441,16 @@ public class ProductServiceImpl implements ProductService {
                             + "】已确认商品【"
                             + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                             + "】交易完成，订单【" + formatOrderCode(ordersVO.getCode(), ordersVO.getId()) + "】已完成。");
-            return ApiResult.success("both parties confirmed completion, product marked as SOLD");
+            String message = "both parties confirmed completion, product marked as SOLD";
+            OrderActionResultVO actionResult = buildActionResult(
+                    ordersVO.getId(),
+                    ordersVO.getCode(),
+                    ordersVO.getTradeStatus(),
+                    ORDER_STATUS_COMPLETED,
+                    "SELLER_CONFIRM_COMPLETION",
+                    message
+            );
+            return ApiResult.success(message, actionResult);
         }
 
         orders.setTradeStatus(ORDER_STATUS_PARTIAL_CONFIRMED);
@@ -389,7 +461,16 @@ public class ProductServiceImpl implements ProductService {
                         + "】已确认商品【"
                         + formatProductTitle(ordersVO.getProductTitle(), ordersVO.getProductId())
                         + "】线下交易完成，请在订单中确认。");
-        return ApiResult.success("seller confirmed meetup completion, waiting for buyer confirmation");
+        String message = "seller confirmed meetup completion, waiting for buyer confirmation";
+        OrderActionResultVO actionResult = buildActionResult(
+                ordersVO.getId(),
+                ordersVO.getCode(),
+                ordersVO.getTradeStatus(),
+                ORDER_STATUS_PARTIAL_CONFIRMED,
+                "SELLER_CONFIRM_COMPLETION",
+                message
+        );
+        return ApiResult.success(message, actionResult);
     }
 
     @Override
@@ -538,5 +619,27 @@ public class ProductServiceImpl implements ProductService {
 
     private String formatOrderCode(String code, Integer orderId) {
         return StringUtils.hasText(code) ? code : "#" + (orderId == null ? "-" : orderId);
+    }
+
+    private OrderActionResultVO buildActionResult(
+            Integer orderId,
+            String orderCode,
+            Integer beforeStatus,
+            Integer afterStatus,
+            String action,
+            String message
+    ) {
+        return OrderActionResultVO.of(
+                orderId,
+                orderCode,
+                beforeStatus,
+                afterStatus,
+                action,
+                message
+        );
+    }
+
+    private boolean isAdmin(Integer roleId) {
+        return Objects.equals(roleId, Protector.ROLE_ADMIN);
     }
 }

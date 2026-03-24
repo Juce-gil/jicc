@@ -44,8 +44,10 @@
           <el-upload
             class="avatar-uploader"
             :action="uploadAction"
+            :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
+            :on-error="handleAvatarError"
           >
             <img
               v-if="userInfo.url"
@@ -99,7 +101,7 @@
 <script>
 import request from "@/utils/request.js";
 import router from "@/router/index";
-import { clearToken } from "@/utils/storage";
+import { clearToken, getToken } from "@/utils/storage";
 import { API_BASE_URL } from "@/utils/request";
 import AdminMenu from "@/components/VerticalMenu.vue";
 import Logo from "@/components/Logo.vue";
@@ -138,6 +140,12 @@ export default {
       handler(path) {
         this.syncCurrentRoute(path);
       }
+    }
+  },
+  computed: {
+    uploadHeaders() {
+      const token = getToken();
+      return token ? { token } : {};
     }
   },
   created() {
@@ -209,11 +217,14 @@ export default {
     },
     handleAvatarSuccess(res) {
       if (res.code !== 200) {
-        this.$message.error(`头像上传异常`);
+        this.$message.error(`头像上传异常，请确认登录状态后重试`);
         return;
       }
       this.$message.success(`头像上传成功`);
       this.userInfo.url = res.data;
+    },
+    handleAvatarError() {
+      this.$message.error(`头像上传失败，请确认登录状态后重试`);
     },
     eventListener(event) {
       // 个人中心

@@ -76,6 +76,7 @@ public class EvaluationsController {
      * @return Result<String>
      */
     @PostMapping(value = "/batchDelete")
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @ResponseBody
     public Result<Object> batchDelete(@RequestBody List<Integer> ids) {
         return evaluationsService.batchDelete(ids);

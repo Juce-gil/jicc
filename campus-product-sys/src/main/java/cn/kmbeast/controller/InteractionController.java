@@ -1,6 +1,7 @@
 package cn.kmbeast.controller;
 
 import cn.kmbeast.aop.Pager;
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.pojo.api.Result;
 import cn.kmbeast.pojo.dto.query.extend.InteractionQueryDto;
 import cn.kmbeast.pojo.entity.Interaction;
@@ -28,6 +29,7 @@ public class InteractionController {
      * @return Result<Boolean> 后台通用返回封装类
      */
     @PostMapping(value = "/likeProduct/{productId}")
+    @Protector
     @ResponseBody
     public Result<String> likeProduct(@PathVariable Integer productId) {
         return interactionService.likeProduct(productId);
@@ -40,6 +42,7 @@ public class InteractionController {
      * @return Result<Boolean> 后台通用返回封装类
      */
     @PostMapping(value = "/saveOperation/{productId}")
+    @Protector
     @ResponseBody
     public Result<Boolean> saveOperation(@PathVariable Integer productId) {
         return interactionService.saveOperation(productId);
@@ -49,6 +52,7 @@ public class InteractionController {
      * 用户删除自己的浏览记录
      */
     @PostMapping(value = "/batchDeleteView")
+    @Protector
     @ResponseBody
     public Result<String> batchDeleteInteraction() {
         return interactionService.batchDeleteInteraction();
@@ -59,6 +63,7 @@ public class InteractionController {
      * 批量删除
      */
     @PostMapping(value = "/batchDelete")
+    @Protector
     @ResponseBody
     public Result<String> batchDelete(@RequestBody List<Integer> ids) {
         return interactionService.batchDelete(ids);
@@ -72,6 +77,7 @@ public class InteractionController {
      */
     @Pager
     @PostMapping(value = "/query")
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @ResponseBody
     public Result<List<Interaction>> query(@RequestBody InteractionQueryDto interactionQueryDto) {
         return interactionService.query(interactionQueryDto);
@@ -84,6 +90,7 @@ public class InteractionController {
      * @return Result<Void> 响应结果
      */
     @PostMapping(value = "/view/{productId}")
+    @Protector
     @ResponseBody
     public Result<Void> view(@PathVariable Integer productId) {
         return interactionService.view(productId);
@@ -96,6 +103,7 @@ public class InteractionController {
      * @return Result<List < ProductVO>> 响应结果
      */
     @PostMapping(value = "/queryUser")
+    @Protector
     @ResponseBody
     public Result<List<ProductVO>> queryUser() {
         return interactionService.queryUser();
@@ -107,10 +115,10 @@ public class InteractionController {
      * @return Result<List < ProductVO>> 响应结果
      */
     @PostMapping(value = "/myView")
+    @Protector
     @ResponseBody
     public Result<List<ProductVO>> myView() {
         return interactionService.myView();
     }
 
 }
-

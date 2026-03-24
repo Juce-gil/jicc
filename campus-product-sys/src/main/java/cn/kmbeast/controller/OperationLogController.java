@@ -12,7 +12,7 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- * 操作日志控制器
+ * Operation log controller.
  */
 @RestController
 @RequestMapping("/operation-log")
@@ -21,27 +21,18 @@ public class OperationLogController {
     @Resource
     private OperationLogService operationLogService;
 
-    /**
-     * 批量删除
-     */
-    @Protector(role = "管理员")
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @PostMapping(value = "/batchDelete")
     @ResponseBody
     public Result<String> batchDelete(@RequestBody List<Integer> ids) {
         return operationLogService.batchDelete(ids);
     }
 
-    /**
-     * 查询
-     *
-     * @param operationLogQueryDto 查询参数
-     * @return Result<List < OperationLogVO>> 响应结果
-     */
     @Pager
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @PostMapping(value = "/query")
     @ResponseBody
     public Result<List<OperationLogVO>> query(@RequestBody OperationLogQueryDto operationLogQueryDto) {
         return operationLogService.query(operationLogQueryDto);
     }
 }
-

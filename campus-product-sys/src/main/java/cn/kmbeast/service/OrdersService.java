@@ -1,16 +1,15 @@
 package cn.kmbeast.service;
 
 import cn.kmbeast.pojo.api.Result;
-import cn.kmbeast.pojo.dto.query.extend.CategoryQueryDto;
 import cn.kmbeast.pojo.dto.query.extend.OrdersQueryDto;
-import cn.kmbeast.pojo.entity.Category;
 import cn.kmbeast.pojo.entity.Orders;
+import cn.kmbeast.pojo.vo.OrderActionResultVO;
 import cn.kmbeast.pojo.vo.OrdersVO;
 
 import java.util.List;
 
 /**
- * 订单的业务逻辑接口
+ * Order service interface.
  */
 public interface OrdersService {
 
@@ -24,6 +23,5 @@ public interface OrdersService {
 
     Result<List<OrdersVO>> queryOrdersList(OrdersQueryDto ordersQueryDto);
 
-    Result<String> returnMoney(Integer ordersId);
-
+    Result<OrderActionResultVO> returnMoney(Integer ordersId);
 }

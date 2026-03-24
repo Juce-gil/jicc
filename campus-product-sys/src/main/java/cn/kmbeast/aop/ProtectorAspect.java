@@ -12,60 +12,77 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;
 
 /**
- * 接口鉴权保护切面
+ * Method-level authorization guard.
  */
 @Aspect
 @Component
 public class ProtectorAspect {
 
-    /**
-     * 环绕通知
-     * 执行前 --- （目标操作） ---执行后
-     * 环绕：两端拦截
-     *
-     * @param proceedingJoinPoint 连接点
-     * @return Object
-     * @author 【B站：程序员辰星】
-     */
     @Around("@annotation(cn.kmbeast.aop.Protector)")
     public Object auth(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return ApiResult.error("authentication context is unavailable");
+        }
+
         HttpServletRequest request = attributes.getRequest();
         String token = request.getHeader("token");
-        if (token == null) {
-            return ApiResult.error("身份认证失败，请先登录");
+        if (!StringUtils.hasText(token)) {
+            return ApiResult.error("authentication failed, please login first");
         }
+
         Claims claims = JwtUtil.fromToken(token);
         if (claims == null) {
-            return ApiResult.error("身份认证失败，请先登录");
+            return ApiResult.error("authentication failed, please login first");
         }
+
         Integer userId = JwtUtil.claimAsInteger(claims.get("id"));
         Integer roleId = JwtUtil.claimAsInteger(claims.get("role"));
-        // 获取被拦截方法的签名
+        if (userId == null || roleId == null) {
+            return ApiResult.error("authentication failed, invalid token payload");
+        }
+
         MethodSignature signature = (MethodSignature) proceedingJoinPoint.getSignature();
-        // 获取方法上的@Protector注解实例
         Protector protectorAnnotation = signature.getMethod().getAnnotation(Protector.class);
         if (protectorAnnotation == null) {
-            return ApiResult.error("身份认证失败，请先登录");
+            return ApiResult.error("authentication failed, missing protector annotation");
         }
-        String role = protectorAnnotation.role();
-        // 验证用户角色
-        if (!"".equals(role)) {
-            if (roleId == null || !Objects.equals(RoleEnum.ROLE(roleId), role)) {
-                return ApiResult.error("无操作权限");
-            }
+
+        if (!hasRequiredRole(protectorAnnotation, roleId)) {
+            return ApiResult.error("permission denied");
         }
-        // 放在 ThreadLocal里面，当前线程都可用
+
         LocalThreadHolder.setUserId(userId, roleId);
-        Object result = proceedingJoinPoint.proceed();
-        // 请求结束，释放资源
-        LocalThreadHolder.clear();
-        return result;
+        try {
+            return proceedingJoinPoint.proceed();
+        } finally {
+            LocalThreadHolder.clear();
+        }
     }
 
+    private boolean hasRequiredRole(Protector protectorAnnotation, Integer currentRoleId) {
+        if (currentRoleId == null) {
+            return false;
+        }
+
+        int requiredRoleCode = protectorAnnotation.roleCode();
+        if (requiredRoleCode > 0 && !Objects.equals(requiredRoleCode, currentRoleId)) {
+            return false;
+        }
+
+        String requiredRoleName = protectorAnnotation.role();
+        if (StringUtils.hasText(requiredRoleName)
+                && !Objects.equals(RoleEnum.ROLE(currentRoleId), requiredRoleName)) {
+            return false;
+        }
+
+        return true;
+    }
 }

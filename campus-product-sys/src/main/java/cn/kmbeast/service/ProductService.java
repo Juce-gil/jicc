@@ -5,6 +5,7 @@ import cn.kmbeast.pojo.dto.query.extend.ProductQueryDto;
 import cn.kmbeast.pojo.dto.update.OrdersDTO;
 import cn.kmbeast.pojo.entity.Product;
 import cn.kmbeast.pojo.vo.ChartVO;
+import cn.kmbeast.pojo.vo.OrderActionResultVO;
 import cn.kmbeast.pojo.vo.OrdersDeliverDto;
 import cn.kmbeast.pojo.vo.ProductVO;
 
@@ -23,25 +24,25 @@ public interface ProductService {
 
     Result<List<ProductVO>> query(ProductQueryDto productQueryDto);
 
-    Result<String> buyProduct(OrdersDTO ordersDTO);
+    Result<OrderActionResultVO> buyProduct(OrdersDTO ordersDTO);
 
-    Result<String> placeAnOrder(Integer ordersId);
+    Result<OrderActionResultVO> placeAnOrder(Integer ordersId);
 
-    Result<String> refund(Integer ordersId);
+    Result<OrderActionResultVO> refund(Integer ordersId);
 
     Result<List<ChartVO>> queryProductInfo(ProductQueryDto productQueryDto);
 
-    Result<String> getGoods(Integer ordersId);
+    Result<OrderActionResultVO> getGoods(Integer ordersId);
 
     Result<List<ProductVO>> queryProductList(Integer id);
 
     /**
      * Legacy alias: seller confirms trade completion.
      */
-    Result<String> deliverGoods(OrdersDeliverDto ordersDeliverDto);
+    Result<OrderActionResultVO> deliverGoods(OrdersDeliverDto ordersDeliverDto);
 
     /**
      * Seller confirms the offline trade has been completed.
      */
-    Result<String> confirmTradeBySeller(Integer ordersId);
+    Result<OrderActionResultVO> confirmTradeBySeller(Integer ordersId);
 }

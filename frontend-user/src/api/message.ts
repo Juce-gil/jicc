@@ -1,4 +1,20 @@
 import request from '@/utils/request'
 
-export const queryMyMessages = (data: Record<string, unknown> = {}) => request.post('/message/queryUser', data)
-export const setAllRead = () => request.post('/message/setRead')
+export interface MessageRecord {
+  id?: number
+  userId?: number
+  content?: string
+  isRead?: boolean
+  createTime?: string
+  userName?: string
+}
+
+export interface MessageQueryPayload {
+  current?: number
+  size?: number
+  isRead?: boolean
+}
+
+export const queryMyMessages = (data: MessageQueryPayload = {}) =>
+  request.post<MessageRecord[]>('/message/queryUser', data)
+export const setAllRead = () => request.post<null>('/message/setRead')

@@ -1,4 +1,4 @@
-import request, { type ApiResponse } from '@/utils/request'
+import request from '@/utils/request'
 
 export interface OrderRecord {
   id?: number
@@ -47,22 +47,31 @@ export interface OrderQuery {
   tradeStatus?: number | null
 }
 
-const toResponse = <T>(promise: Promise<unknown>) => promise as Promise<ApiResponse<T>>
+export interface OrderActionResult {
+  orderId?: number
+  orderCode?: string
+  beforeTradeStatus?: number | null
+  afterTradeStatus?: number | null
+  beforeTradeStatusName?: string | null
+  afterTradeStatusName?: string | null
+  action?: string
+  message?: string
+}
 
 export const queryMyOrders = (data: OrderQuery = {}) =>
-  toResponse<OrderRecord[]>(request.post('/orders/queryUser', data))
+  request.post<OrderRecord[]>('/orders/queryUser', data)
 
 export const querySellerOrders = (data: OrderQuery = {}) =>
-  toResponse<OrderRecord[]>(request.post('/orders/queryOrdersList', data))
+  request.post<OrderRecord[]>('/orders/queryOrdersList', data)
 
 export const sellerConfirmReservation = (orderId: number) =>
-  toResponse<unknown>(request.post('/product/placeAnOrder/' + orderId))
+  request.post<OrderActionResult>('/product/placeAnOrder/' + orderId)
 
 export const cancelReservation = (orderId: number) =>
-  toResponse<unknown>(request.post('/product/refund/' + orderId))
+  request.post<OrderActionResult>('/product/refund/' + orderId)
 
 export const buyerConfirmTrade = (orderId: number) =>
-  toResponse<unknown>(request.post('/product/getGoods/' + orderId))
+  request.post<OrderActionResult>('/product/getGoods/' + orderId)
 
 export const sellerConfirmTrade = (orderId: number) =>
-  toResponse<unknown>(request.post('/product/confirmTradeBySeller/' + orderId))
+  request.post<OrderActionResult>('/product/confirmTradeBySeller/' + orderId)

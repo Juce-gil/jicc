@@ -5,7 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.system.ApplicationHome;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
@@ -23,8 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 閺傚洣娆㈤崜宥囶伂閹貉冨煑閸? *
- * @since 2024-03-22
+ * File upload/download controller.
  */
 @RestController
 @RequestMapping("/file")
@@ -33,7 +36,7 @@ public class FileController {
     private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     @Value("${my-server.api-context-path}")
-    private String API;
+    private String apiContextPath;
 
     @Value("${trade.upload-dir:pic}")
     private String uploadDir;
@@ -42,109 +45,84 @@ public class FileController {
     public void initUploadDirectoryInfo() {
         try {
             File primaryDir = ensurePrimaryUploadDirExists();
-            log.info("Primary upload directory resolved to: {}", primaryDir.getAbsolutePath());
+            log.info("Primary upload directory: {}", primaryDir.getAbsolutePath());
 
             List<File> legacyDirs = resolveLegacyReadDirs(primaryDir);
             if (legacyDirs.isEmpty()) {
-                log.info("No legacy upload directories detected for fallback reads.");
+                log.info("No legacy upload directories found.");
             } else {
                 for (File legacyDir : legacyDirs) {
-                    log.warn("Legacy upload directory enabled for migration/fallback: {}", legacyDir.getAbsolutePath());
+                    log.warn("Legacy upload directory enabled for fallback: {}", legacyDir.getAbsolutePath());
                 }
                 migrateLegacyFiles(primaryDir, legacyDirs);
             }
         } catch (IOException e) {
-            log.error("Failed to initialize upload directory during startup", e);
+            log.error("Failed to initialize upload directories", e);
         }
     }
 
-    /**
-     * 閺傚洣娆㈡稉濠佺炊
-     *
-     * @param multipartFile 閺傚洣娆㈠ù?     * @return 閸濆秴绨?     */
     @PostMapping("/upload")
     public Map<String, Object> uploadFile(@RequestParam("file") MultipartFile multipartFile) {
-        String uuid = IdFactoryUtil.getFileId();
-        String fileName = uuid + multipartFile.getOriginalFilename();
-        Map<String, Object> rep = new HashMap<>();
-        try {
-            if (uploadFile(multipartFile, fileName)) {
-                rep.put("code", 200);
-                rep.put("data", API + "/file/getFile?fileName=" + fileName);
-                return rep;
-            }
-        } catch (IOException e) {
-            log.error("File upload failed, fileName={}", fileName, e);
-            rep.put("code", 400);
-            rep.put("msg", "鏂囦欢涓婁紶寮傚父");
-            return rep;
-        }
-        rep.put("code", 400);
-        rep.put("msg", "鏂囦欢涓婁紶寮傚父");
-        return rep;
+        return doUpload(multipartFile, false);
     }
 
-    /**
-     * 瑙嗛涓婁紶
-     *
-     * @param multipartFile 閺傚洣娆㈠ù?     * @return 閸濆秴绨?     */
     @PostMapping("/video/upload")
     public Map<String, Object> videoUpload(@RequestParam("file") MultipartFile multipartFile) {
-        String uuid = IdFactoryUtil.getFileId();
-        String fileName = uuid + multipartFile.getOriginalFilename();
-        Map<String, Object> rep = new HashMap<>();
-
-        try {
-            if (uploadFile(multipartFile, fileName)) {
-                rep.put("code", 200);
-                rep.put("data", API + "/file/getFile?fileName=" + fileName);
-                return rep;
-            }
-        } catch (IOException e) {
-            log.error("Video upload failed, fileName={}", fileName, e);
-            rep.put("code", 400);
-            rep.put("msg", "鏂囦欢涓婁紶寮傚父");
-            return rep;
-        }
-        rep.put("code", 400);
-        rep.put("msg", "鏂囦欢涓婁紶寮傚父");
-        return rep;
+        return doUpload(multipartFile, true);
     }
 
-    /**
-     * 涓婁紶鏂囦欢
-     *
-     * @param multipartFile 閺傚洣娆㈠ù?     * @param fileName      閺傚洣娆㈠Λ鍕敩     * @return boolean
-     * @throws IOException 閸掓稑缂撻敓锟?    */
+    private Map<String, Object> doUpload(MultipartFile multipartFile, boolean video) {
+        Map<String, Object> response = new HashMap<>();
+        String fileName = IdFactoryUtil.getFileId() + safeOriginalFilename(multipartFile.getOriginalFilename());
+        try {
+            if (uploadFile(multipartFile, fileName)) {
+                response.put("code", 200);
+                response.put("data", apiContextPath + "/file/getFile?fileName=" + fileName);
+                return response;
+            }
+        } catch (IOException e) {
+            log.error("Upload failed. fileName={}, video={}", fileName, video, e);
+            response.put("code", 400);
+            response.put("msg", video ? "video upload failed" : "file upload failed");
+            return response;
+        }
+        response.put("code", 400);
+        response.put("msg", video ? "video upload failed" : "file upload failed");
+        return response;
+    }
+
     public boolean uploadFile(MultipartFile multipartFile, String fileName) throws IOException {
         return saveFile(multipartFile, fileName);
     }
 
     private boolean saveFile(MultipartFile multipartFile, String fileName) throws IOException {
+        if (!isSafeFileName(fileName)) {
+            log.warn("Rejected unsafe upload fileName: {}", fileName);
+            return false;
+        }
         File fileDir = ensurePrimaryUploadDirExists();
-        File file = new File(fileDir.getAbsolutePath() + "/" + fileName);
-        if (file.exists()) {
-            if (!file.delete()) {
-                log.error("Failed to delete existing file before overwrite: {}", file.getAbsolutePath());
-                return false;
-            }
+        File targetFile = new File(fileDir, fileName).getCanonicalFile();
+        if (!isInsideDirectory(fileDir, targetFile)) {
+            log.warn("Blocked upload path traversal attempt. fileName={}", fileName);
+            return false;
         }
-        if (file.createNewFile()) {
-            multipartFile.transferTo(file);
-            log.info("Saved uploaded file to: {}", file.getAbsolutePath());
-            return true;
+        if (targetFile.exists() && !targetFile.delete()) {
+            log.error("Failed to delete existing file before overwrite: {}", targetFile.getAbsolutePath());
+            return false;
         }
-        log.error("Failed to create upload file: {}", file.getAbsolutePath());
-        return false;
+        if (!targetFile.createNewFile()) {
+            log.error("Failed to create upload file: {}", targetFile.getAbsolutePath());
+            return false;
+        }
+        multipartFile.transferTo(targetFile);
+        log.info("Saved file: {}", targetFile.getAbsolutePath());
+        return true;
     }
 
     private File ensurePrimaryUploadDirExists() throws IOException {
         File primaryDir = resolveUploadDir();
-        if (!primaryDir.exists()) {
-            if (!primaryDir.mkdirs()) {
-                throw new IOException("Failed to create upload directory: " + primaryDir.getAbsolutePath());
-            }
-            log.info("Created upload directory: {}", primaryDir.getAbsolutePath());
+        if (!primaryDir.exists() && !primaryDir.mkdirs()) {
+            throw new IOException("Failed to create upload directory: " + primaryDir.getAbsolutePath());
         }
         return primaryDir;
     }
@@ -166,7 +144,8 @@ public class FileController {
         Path path = homeDir.getCanonicalFile().toPath();
         if (path.getFileName() != null && "classes".equalsIgnoreCase(path.getFileName().toString())) {
             Path targetPath = path.getParent();
-            if (targetPath != null && targetPath.getFileName() != null
+            if (targetPath != null
+                    && targetPath.getFileName() != null
                     && "target".equalsIgnoreCase(targetPath.getFileName().toString())) {
                 Path projectPath = targetPath.getParent();
                 if (projectPath != null) {
@@ -197,7 +176,6 @@ public class FileController {
         for (File legacyDir : legacyDirs) {
             File[] files = legacyDir.listFiles();
             if (files == null) {
-                log.warn("Unable to list files in legacy upload directory: {}", legacyDir.getAbsolutePath());
                 continue;
             }
             for (File legacyFile : files) {
@@ -212,34 +190,38 @@ public class FileController {
                 try {
                     Files.copy(legacyFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                     migratedCount++;
-                    log.info("Migrated legacy upload file to primary directory. source={}, target={}",
-                            legacyFile.getAbsolutePath(), targetFile.getAbsolutePath());
                 } catch (IOException e) {
                     failedCount++;
-                    log.error("Failed to migrate legacy upload file. source={}, target={}",
+                    log.error("Failed to migrate legacy file. source={}, target={}",
                             legacyFile.getAbsolutePath(), targetFile.getAbsolutePath(), e);
                 }
             }
         }
-        log.info("Legacy upload migration finished. migrated={}, skippedExisting={}, failed={}",
+        log.info("Legacy migration finished. migrated={}, skipped={}, failed={}",
                 migratedCount, skippedCount, failedCount);
     }
 
     private File resolveReadableFile(String fileName) throws IOException {
+        if (!isSafeFileName(fileName)) {
+            return null;
+        }
         File primaryDir = ensurePrimaryUploadDirExists();
-        File primaryFile = new File(primaryDir, fileName);
-        if (primaryFile.exists() && primaryFile.isFile()) {
+        File primaryFile = new File(primaryDir, fileName).getCanonicalFile();
+        if (isInsideDirectory(primaryDir, primaryFile) && primaryFile.exists() && primaryFile.isFile()) {
             return primaryFile;
         }
 
         for (File legacyDir : resolveLegacyReadDirs(primaryDir)) {
-            File legacyFile = new File(legacyDir, fileName);
+            File legacyFile = new File(legacyDir, fileName).getCanonicalFile();
+            if (!isInsideDirectory(legacyDir, legacyFile)) {
+                continue;
+            }
             if (legacyFile.exists() && legacyFile.isFile()) {
                 File migratedFile = tryMigrateSingleFile(primaryDir, legacyFile);
                 if (migratedFile != null && migratedFile.exists() && migratedFile.isFile()) {
                     return migratedFile;
                 }
-                log.warn("Serving file from legacy upload directory because on-demand migration failed. fileName={}, path={}",
+                log.warn("Serving from legacy directory due migration failure. fileName={}, path={}",
                         fileName, legacyFile.getAbsolutePath());
                 return legacyFile;
             }
@@ -248,33 +230,32 @@ public class FileController {
     }
 
     private File tryMigrateSingleFile(File primaryDir, File legacyFile) {
-        File targetFile = new File(primaryDir, legacyFile.getName());
-        if (targetFile.exists()) {
-            return targetFile;
-        }
         try {
+            File targetFile = new File(primaryDir, legacyFile.getName()).getCanonicalFile();
+            if (!isInsideDirectory(primaryDir, targetFile)) {
+                return null;
+            }
+            if (targetFile.exists()) {
+                return targetFile;
+            }
             Files.copy(legacyFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-            log.info("On-demand migrated legacy upload file to primary directory. source={}, target={}",
-                    legacyFile.getAbsolutePath(), targetFile.getAbsolutePath());
             return targetFile;
         } catch (IOException e) {
-            log.error("Failed on-demand migration for legacy upload file. source={}, target={}",
-                    legacyFile.getAbsolutePath(), targetFile.getAbsolutePath(), e);
+            log.error("Failed on-demand migration for legacy file. source={}", legacyFile.getAbsolutePath(), e);
             return null;
         }
     }
 
-    /**
-     * 鏌ョ湅鍥剧墖璧勬簮
-     *
-     * @param imageName 閺傚洣娆㈠Λ鍕敩     * @param response  閸濆秴绨?    * @throws IOException 閸掓稑缂撻敓锟?    */
     @GetMapping("/getFile")
-    public void getImage(@RequestParam("fileName") String imageName,
-                         HttpServletResponse response) throws IOException {
+    public void getImage(@RequestParam("fileName") String imageName, HttpServletResponse response) throws IOException {
+        if (!isSafeFileName(imageName)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            log.warn("Rejected unsafe file request. fileName={}", imageName);
+            return;
+        }
         File image = resolveReadableFile(imageName);
         if (image == null) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            log.warn("Requested file not found in primary or legacy upload directories. fileName={}", imageName);
             return;
         }
         String contentType = Files.probeContentType(image.toPath());
@@ -282,15 +263,49 @@ public class FileController {
             response.setContentType(contentType);
         }
         response.setContentLengthLong(image.length());
-        try (FileInputStream fileInputStream = new FileInputStream(image);
+        try (FileInputStream inputStream = new FileInputStream(image);
              OutputStream outputStream = response.getOutputStream()) {
             byte[] buffer = new byte[8192];
             int length;
-            while ((length = fileInputStream.read(buffer)) != -1) {
+            while ((length = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, length);
             }
             outputStream.flush();
         }
     }
 
+    private String safeOriginalFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            return "file.bin";
+        }
+        String normalized = originalFilename.trim().replace("\\", "/");
+        int index = normalized.lastIndexOf('/');
+        if (index >= 0) {
+            normalized = normalized.substring(index + 1);
+        }
+        if (!isSafeFileName(normalized)) {
+            return "file.bin";
+        }
+        return normalized;
+    }
+
+    private boolean isSafeFileName(String fileName) {
+        if (fileName == null) {
+            return false;
+        }
+        String trimmed = fileName.trim();
+        if (trimmed.isEmpty() || trimmed.length() > 255) {
+            return false;
+        }
+        return !trimmed.contains("..")
+                && !trimmed.contains("/")
+                && !trimmed.contains("\\")
+                && !trimmed.contains(":");
+    }
+
+    private boolean isInsideDirectory(File baseDir, File candidateFile) throws IOException {
+        String basePath = baseDir.getCanonicalPath() + File.separator;
+        String candidatePath = candidateFile.getCanonicalPath();
+        return candidatePath.startsWith(basePath);
+    }
 }

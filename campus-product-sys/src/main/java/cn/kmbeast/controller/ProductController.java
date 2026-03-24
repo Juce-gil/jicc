@@ -2,12 +2,14 @@ package cn.kmbeast.controller;
 
 import cn.kmbeast.aop.Log;
 import cn.kmbeast.aop.Pager;
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.pojo.api.Result;
 import cn.kmbeast.pojo.dto.query.extend.ProductQueryDto;
 import cn.kmbeast.pojo.dto.update.OrdersDTO;
 import cn.kmbeast.pojo.entity.Product;
 import cn.kmbeast.pojo.vo.ChartVO;
+import cn.kmbeast.pojo.vo.OrderActionResultVO;
 import cn.kmbeast.pojo.vo.OrdersDeliverDto;
 import cn.kmbeast.pojo.vo.ProductVO;
 import cn.kmbeast.service.ProductService;
@@ -29,13 +31,15 @@ public class ProductController {
     /**
      * Buyer creates a reservation request.
      */
+    @Protector
     @Log(detail = "reservation request")
     @PostMapping(value = "/buyProduct")
     @ResponseBody
-    public Result<String> buyProduct(@RequestBody OrdersDTO ordersDTO) {
+    public Result<OrderActionResultVO> buyProduct(@RequestBody OrdersDTO ordersDTO) {
         return productService.buyProduct(ordersDTO);
     }
 
+    @Protector
     @Log(detail = "publish product")
     @PostMapping(value = "/save")
     @ResponseBody
@@ -43,6 +47,7 @@ public class ProductController {
         return productService.save(product);
     }
 
+    @Protector
     @Log(detail = "update product")
     @PutMapping(value = "/update")
     @ResponseBody
@@ -50,6 +55,7 @@ public class ProductController {
         return productService.update(product);
     }
 
+    @Protector(roleCode = Protector.ROLE_ADMIN)
     @PostMapping(value = "/batchDelete")
     @ResponseBody
     public Result<String> batchDelete(@RequestBody List<Integer> ids) {
@@ -66,53 +72,59 @@ public class ProductController {
     /**
      * Seller confirms the reservation request.
      */
+    @Protector
     @Log(detail = "seller confirm reservation")
     @PostMapping(value = "/placeAnOrder/{ordersId}")
     @ResponseBody
-    public Result<String> placeAnOrder(@PathVariable Integer ordersId) {
+    public Result<OrderActionResultVO> placeAnOrder(@PathVariable Integer ordersId) {
         return productService.placeAnOrder(ordersId);
     }
 
     /**
      * Buyer or seller cancels the reservation.
      */
+    @Protector
     @Log(detail = "cancel reservation")
     @PostMapping(value = "/refund/{ordersId}")
     @ResponseBody
-    public Result<String> refund(@PathVariable Integer ordersId) {
+    public Result<OrderActionResultVO> refund(@PathVariable Integer ordersId) {
         return productService.refund(ordersId);
     }
 
     /**
      * Buyer confirms offline trade completion.
      */
+    @Protector
     @Log(detail = "buyer confirm trade completion")
     @PostMapping(value = "/getGoods/{ordersId}")
     @ResponseBody
-    public Result<String> getGoods(@PathVariable Integer ordersId) {
+    public Result<OrderActionResultVO> getGoods(@PathVariable Integer ordersId) {
         return productService.getGoods(ordersId);
     }
 
     /**
      * Legacy body-based alias of seller completion confirmation.
      */
+    @Protector
     @Log(detail = "seller confirm trade completion legacy")
     @PostMapping(value = "/deliverGoods")
     @ResponseBody
-    public Result<String> deliverGoods(@RequestBody OrdersDeliverDto ordersDeliverDto) {
+    public Result<OrderActionResultVO> deliverGoods(@RequestBody OrdersDeliverDto ordersDeliverDto) {
         return productService.deliverGoods(ordersDeliverDto);
     }
 
     /**
      * Seller confirms offline trade completion.
      */
+    @Protector
     @Log(detail = "seller confirm trade completion")
     @PostMapping(value = "/confirmTradeBySeller/{ordersId}")
     @ResponseBody
-    public Result<String> confirmTradeBySeller(@PathVariable Integer ordersId) {
+    public Result<OrderActionResultVO> confirmTradeBySeller(@PathVariable Integer ordersId) {
         return productService.confirmTradeBySeller(ordersId);
     }
 
+    @Protector
     @PostMapping(value = "/queryProductInfo")
     @ResponseBody
     public Result<List<ChartVO>> queryProductInfo(@RequestBody ProductQueryDto productQueryDto) {
@@ -120,6 +132,7 @@ public class ProductController {
         return productService.queryProductInfo(productQueryDto);
     }
 
+    @Protector
     @PostMapping(value = "/queryUser")
     @ResponseBody
     public Result<List<ProductVO>> queryUser(@RequestBody ProductQueryDto productQueryDto) {
@@ -133,4 +146,3 @@ public class ProductController {
         return productService.queryProductList(id);
     }
 }
-

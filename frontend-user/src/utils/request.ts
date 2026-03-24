@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios, { AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { USER_AUTH_STORAGE_KEY } from '@/stores/auth'
 
 export interface ApiResponse<T = unknown> {
@@ -15,22 +15,25 @@ const service = axios.create({
 
 service.interceptors.request.use((config) => {
   const raw = localStorage.getItem(USER_AUTH_STORAGE_KEY)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed?.token) {
-        config.headers.token = parsed.token
-        config.headers.Authorization = 'Bearer ' + parsed.token
-      }
-    } catch (error) {
-      console.warn('Failed to restore user auth snapshot', error)
+  if (!raw) {
+    return config
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed?.token) {
+      const headers = AxiosHeaders.from(config.headers)
+      headers.set('token', parsed.token)
+      headers.set('Authorization', `Bearer ${parsed.token}`)
+      config.headers = headers
     }
+  } catch (error) {
+    console.warn('Failed to parse user auth snapshot', error)
   }
   return config
 })
 
-const unwrap = async <T>(promise: Promise<AxiosResponse<ApiResponse<T>>>) => {
-  const response = await promise
+const unwrap = async <T>(requestPromise: Promise<AxiosResponse<ApiResponse<T>>>) => {
+  const response = await requestPromise
   return response.data
 }
 
@@ -41,15 +44,16 @@ const request = {
   delete<T = unknown>(url: string, config?: AxiosRequestConfig) {
     return unwrap<T>(service.delete<ApiResponse<T>>(url, config))
   },
-  post<T = unknown, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig<D>) {
-    return unwrap<T>(service.post<ApiResponse<T>, AxiosResponse<ApiResponse<T>>, D>(url, data, config))
+  post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return unwrap<T>(service.post<ApiResponse<T>>(url, data, config))
   },
-  put<T = unknown, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig<D>) {
-    return unwrap<T>(service.put<ApiResponse<T>, AxiosResponse<ApiResponse<T>>, D>(url, data, config))
+  put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return unwrap<T>(service.put<ApiResponse<T>>(url, data, config))
   },
-  patch<T = unknown, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig<D>) {
-    return unwrap<T>(service.patch<ApiResponse<T>, AxiosResponse<ApiResponse<T>>, D>(url, data, config))
-  }
+  patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return unwrap<T>(service.patch<ApiResponse<T>>(url, data, config))
+  },
+  instance: service
 }
 
 export default request

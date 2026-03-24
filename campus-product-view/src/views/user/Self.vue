@@ -5,9 +5,11 @@
       <p>*头像</p>
       <el-upload
         class="avatar-uploader"
-        action="/api/campus-product-sys/v1.0/file/upload"
+        :action="uploadAction"
+        :headers="uploadHeaders"
         :show-file-list="false"
         :on-success="handleAvatarSuccess"
+        :on-error="handleAvatarError"
       >
         <img
           v-if="userAvatar"
@@ -111,14 +113,23 @@
 </template>
 <script>
 import { toFullImageUrl } from "@/utils/imageUrl";
+import { API_BASE_URL } from "@/utils/request";
+import { getToken } from "@/utils/storage";
 
 export default {
   name: "Self",
   data() {
     return {
+      uploadAction: API_BASE_URL + "/file/upload",
       userInfo: {},
       userAvatar: ""
     };
+  },
+  computed: {
+    uploadHeaders() {
+      const token = getToken();
+      return token ? { token } : {};
+    }
   },
   created() {
     this.auth();
@@ -160,6 +171,14 @@ export default {
       if (res.code === 200) {
         this.userAvatar = res.data;
       }
+    },
+    handleAvatarError() {
+      this.$notify({
+        duration: 1500,
+        title: "Avatar Upload",
+        message: "Upload failed, please login again and retry",
+        type: "error"
+      });
     },
     // Token 检验，取得用户信息
     async auth() {

@@ -1,6 +1,7 @@
 package cn.kmbeast.controller;
 
 import cn.kmbeast.aop.Pager;
+import cn.kmbeast.aop.Protector;
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.pojo.api.Result;
 import cn.kmbeast.pojo.dto.query.extend.ContentQueryDto;
@@ -29,6 +30,7 @@ public class ContentController {
      * @return Result<String> 响应结果
      */
     @PostMapping(value = "/save")
+    @Protector
     @ResponseBody
     public Result<String> save(@RequestBody Content content) {
         return contentService.save(content);
@@ -41,6 +43,7 @@ public class ContentController {
      * @return Result<String> 响应结果
      */
     @PutMapping(value = "/update")
+    @Protector
     @ResponseBody
     public Result<String> update(@RequestBody Content content) {
         return contentService.update(content);
@@ -50,6 +53,7 @@ public class ContentController {
      * 删除
      */
     @PostMapping(value = "/batchDelete")
+    @Protector
     @ResponseBody
     public Result<String> batchDelete(@RequestBody List<Integer> ids) {
         return contentService.batchDelete(ids);
@@ -63,6 +67,7 @@ public class ContentController {
      */
     @Pager
     @PostMapping(value = "/queryUser")
+    @Protector
     @ResponseBody
     public Result<List<ContentVO>> queryUser(@RequestBody ContentQueryDto contentQueryDto) {
         contentQueryDto.setUserId(LocalThreadHolder.getUserId());
@@ -82,4 +87,3 @@ public class ContentController {
         return contentService.query(contentQueryDto);
     }
 }
-

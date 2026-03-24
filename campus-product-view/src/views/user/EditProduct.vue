@@ -49,8 +49,10 @@
           <p>产品图</p>
           <el-upload
             :action="uploadAction"
+            :headers="uploadHeaders"
             list-type="picture-card"
             :on-success="handlePictureCardSuccess"
+            :on-error="handleUploadError"
             :file-list="coverList"
             :on-preview="handlePictureCardPreview"
             :on-remove="handleRemove"
@@ -101,7 +103,7 @@
 <script>
 import Editor from "@/components/Editor";
 import UserPageSection from "@/components/user/UserPageSection.vue";
-import { clearProductInfo, getProductInfo } from "@/utils/storage";
+import { clearProductInfo, getProductInfo, getToken } from "@/utils/storage";
 import { API_BASE_URL } from "@/utils/request";
 import { toFullImageUrl } from "@/utils/imageUrl";
 export default {
@@ -117,6 +119,12 @@ export default {
       coverList: [],
       categoryList: []
     };
+  },
+  computed: {
+    uploadHeaders() {
+      const token = getToken();
+      return token ? { token } : {};
+    }
   },
   created() {
     this.getStorageProductInfo();
@@ -281,6 +289,9 @@ export default {
     handlePictureCardPreview(file) {
       this.dialogImageUrl = this.imageUrl(this.resolveCoverValue(file));
       this.dialogVisible = true;
+    },
+    handleUploadError() {
+      this.$message.error("Image upload failed, please login again and retry");
     }
   }
 };
