@@ -1,4 +1,4 @@
-﻿package cn.kmbeast.service.impl;
+package cn.kmbeast.service.impl;
 
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.mapper.AddressMapper;
@@ -104,7 +104,7 @@ public class UserServiceImpl implements UserService {
             return ApiResult.error("璐﹀彿涓嶈兘涓虹┖");
         }
         if (!StringUtils.hasText(userRegisterDTO.getUserName())) {
-            return ApiResult.error("鐢ㄦ埛鍚嶄笉鑳戒负绌?);
+            return ApiResult.error("用户名不能为空");
         }
         if (!StringUtils.hasText(userRegisterDTO.getUserPwd())) {
             return ApiResult.error("瀵嗙爜涓嶈兘涓虹┖");
@@ -112,7 +112,7 @@ public class UserServiceImpl implements UserService {
 
         String userAccount = userRegisterDTO.getUserAccount().trim();
         if (existsOtherUserWithAccount(userAccount, null)) {
-            return ApiResult.error("璐﹀彿涓嶅彲鐢?);
+            return ApiResult.error("账号不可用");
         }
 
         User saveEntity = User.builder()
@@ -152,13 +152,13 @@ public class UserServiceImpl implements UserService {
                 User.builder().userAccount(userLoginDTO.getUserAccount().trim()).build()
         );
         if (user == null) {
-            return ApiResult.error("璐﹀彿涓嶅瓨鍦?);
+            return ApiResult.error("账号不存在");
         }
         if (!Objects.equals(userLoginDTO.getUserPwd(), user.getUserPwd())) {
             return ApiResult.error("瀵嗙爜閿欒");
         }
         if (Boolean.TRUE.equals(user.getIsLogin())) {
-            return ApiResult.error("鐧诲綍鐘舵€佸紓甯?);
+            return ApiResult.error("登录状态异常");
         }
 
         String token = JwtUtil.toToken(user.getId(), user.getUserRole());
@@ -182,12 +182,12 @@ public class UserServiceImpl implements UserService {
     public Result<UserVO> auth() {
         Integer userId = LocalThreadHolder.getUserId();
         if (userId == null) {
-            return ApiResult.error("鐧诲綍宸插け鏁堬紝璇烽噸鏂扮櫥褰?);
+            return ApiResult.error("登录已失效，请重新登录");
         }
 
         User user = userMapper.getByActive(User.builder().id(userId).build());
         if (user == null) {
-            return ApiResult.error("鐢ㄦ埛涓嶅瓨鍦ㄦ垨宸插垹闄?);
+            return ApiResult.error("用户不存在或已删除");
         }
 
         UserVO userVO = new UserVO();
@@ -223,25 +223,25 @@ public class UserServiceImpl implements UserService {
 
         Integer currentUserId = LocalThreadHolder.getUserId();
         if (currentUserId == null) {
-            return ApiResult.error("鐧诲綍宸插け鏁堬紝璇烽噸鏂扮櫥褰?);
+            return ApiResult.error("登录已失效，请重新登录");
         }
         User currentUser = userMapper.getByActive(User.builder().id(currentUserId).build());
         if (currentUser == null) {
-            return ApiResult.error("鐢ㄦ埛涓嶅瓨鍦ㄦ垨宸插垹闄?);
+            return ApiResult.error("用户不存在或已删除");
         }
 
         if (userUpdateDTO.getUserAccount() != null && !StringUtils.hasText(userUpdateDTO.getUserAccount())) {
             return ApiResult.error("璐﹀彿涓嶈兘涓虹┖");
         }
         if (userUpdateDTO.getUserName() != null && !StringUtils.hasText(userUpdateDTO.getUserName())) {
-            return ApiResult.error("鐢ㄦ埛鍚嶄笉鑳戒负绌?);
+            return ApiResult.error("用户名不能为空");
         }
         if (userUpdateDTO.getUserPwd() != null && !StringUtils.hasText(userUpdateDTO.getUserPwd())) {
             return ApiResult.error("瀵嗙爜涓嶈兘涓虹┖");
         }
         if (StringUtils.hasText(userUpdateDTO.getUserAccount())
                 && existsOtherUserWithAccount(userUpdateDTO.getUserAccount().trim(), currentUserId)) {
-            return ApiResult.error("璐﹀彿涓嶅彲鐢?);
+            return ApiResult.error("账号不可用");
         }
 
         User updateEntity = User.builder().id(currentUserId).build();
@@ -518,20 +518,20 @@ public class UserServiceImpl implements UserService {
             return ApiResult.error("璇疯緭鍏ユ柊瀵嗙爜");
         }
         if (!StringUtils.hasText(againPwd)) {
-            return ApiResult.error("璇疯ˉ鍏呯‘璁ゅ瘑鐮?);
+            return ApiResult.error("请补充确认密码");
         }
         if (!Objects.equals(newPwd, againPwd)) {
-            return ApiResult.error("鍓嶅悗瀵嗙爜杈撳叆涓嶄竴鑷?);
+            return ApiResult.error("前后密码输入不一致");
         }
 
         Integer currentUserId = LocalThreadHolder.getUserId();
         if (currentUserId == null) {
-            return ApiResult.error("鐧诲綍宸插け鏁堬紝璇烽噸鏂扮櫥褰?);
+            return ApiResult.error("登录已失效，请重新登录");
         }
 
         User user = userMapper.getByActive(User.builder().id(currentUserId).build());
         if (user == null) {
-            return ApiResult.error("鐢ㄦ埛涓嶅瓨鍦ㄦ垨宸插垹闄?);
+            return ApiResult.error("用户不存在或已删除");
         }
         if (!Objects.equals(user.getUserPwd(), oldPwd)) {
             return ApiResult.error("鍘熷瀵嗙爜楠岃瘉澶辫触");
@@ -555,7 +555,7 @@ public class UserServiceImpl implements UserService {
 
         User user = userMapper.getByActive(User.builder().id(id).build());
         if (user == null) {
-            return ApiResult.error("鐢ㄦ埛涓嶅瓨鍦ㄦ垨宸插垹闄?);
+            return ApiResult.error("用户不存在或已删除");
         }
 
         UserVO userVO = new UserVO();
@@ -588,21 +588,21 @@ public class UserServiceImpl implements UserService {
 
         User existingUser = userMapper.getByActive(User.builder().id(user.getId()).build());
         if (existingUser == null) {
-            return ApiResult.error("鐢ㄦ埛涓嶅瓨鍦ㄦ垨宸插垹闄?);
+            return ApiResult.error("用户不存在或已删除");
         }
 
         if (user.getUserAccount() != null && !StringUtils.hasText(user.getUserAccount())) {
             return ApiResult.error("璐﹀彿涓嶈兘涓虹┖");
         }
         if (user.getUserName() != null && !StringUtils.hasText(user.getUserName())) {
-            return ApiResult.error("鐢ㄦ埛鍚嶄笉鑳戒负绌?);
+            return ApiResult.error("用户名不能为空");
         }
         if (user.getUserPwd() != null && !StringUtils.hasText(user.getUserPwd())) {
             return ApiResult.error("瀵嗙爜涓嶈兘涓虹┖");
         }
         if (StringUtils.hasText(user.getUserAccount())
                 && existsOtherUserWithAccount(user.getUserAccount().trim(), user.getId())) {
-            return ApiResult.error("璐﹀彿涓嶅彲鐢?);
+            return ApiResult.error("账号不可用");
         }
 
         normalizeUserMutableFields(user);

@@ -1,4 +1,4 @@
-﻿package cn.kmbeast.mapper;
+package cn.kmbeast.mapper;
 
 import cn.kmbeast.pojo.entity.EvaluationsUpvote;
 import org.apache.ibatis.annotations.Param;

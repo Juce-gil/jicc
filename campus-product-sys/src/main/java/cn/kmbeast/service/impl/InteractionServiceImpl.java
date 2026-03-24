@@ -1,4 +1,4 @@
-﻿package cn.kmbeast.service.impl;
+package cn.kmbeast.service.impl;
 
 import cn.kmbeast.context.LocalThreadHolder;
 import cn.kmbeast.mapper.InteractionMapper;

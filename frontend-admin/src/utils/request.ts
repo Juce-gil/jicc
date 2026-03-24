@@ -1,4 +1,4 @@
-﻿import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios, { AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ADMIN_AUTH_STORAGE_KEY } from '@/stores/auth'
 
 export interface ApiResponse<T = unknown> {
@@ -19,14 +19,13 @@ service.interceptors.request.use((config) => {
     try {
       const parsed = JSON.parse(raw)
       if (parsed?.token) {
-        config.headers = {
-          ...(config.headers ?? {}),
-          token: parsed.token,
-          Authorization: `Bearer ${parsed.token}`
-        }
+        const headers = AxiosHeaders.from(config.headers)
+        headers.set('token', parsed.token)
+        headers.set('Authorization', `Bearer ${parsed.token}`)
+        config.headers = headers
       }
     } catch (error) {
-      console.warn('读取管理端登录态失败', error)
+      console.warn('admin auth parse failed', error)
     }
   }
   return config
